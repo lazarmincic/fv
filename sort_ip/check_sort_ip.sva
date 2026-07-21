@@ -1,0 +1,11 @@
+module check_sort_ip
+  (
+   input clk, input rst
+   );
+
+    default clocking @(posedge clk); endclocking
+    default disable iff (rst);
+
+    // mesto za osobine
+
+endmodule
