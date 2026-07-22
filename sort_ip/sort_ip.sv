@@ -15,15 +15,19 @@ module sort_ip
 		output logic [31:0] aout_tdata,
 		output logic aout_tlast
    );
+	logic [9:0] dup_count; // log2(1024)
+	logic en;
 
-    always_ff @(posedge clk or posedge rst)
-	begin
-		
+	/* brojanje duplikata, skica
+    always_ff @(posedge clk or posedge rst_n) begin
+		if (rst) begin
+			dup_count  <= '0;
+			prev_out_2 <= '0;
+		end 
+		else if (transmit_valid) begin 
+			dup_count  <= dup_count + pair_equal + match_inter;
+			prev_out_2 <= out_2;
+		end
 	end
-
-    always_comb
-	begin
-		
-	end
-
+	*/
 endmodule

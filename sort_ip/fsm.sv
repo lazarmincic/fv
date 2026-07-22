@@ -3,29 +3,38 @@ module fsm (
     input logic rst,
 
     input logic ain_tvalid,
-    output logic ain_tready,
     input logic ain_tlast,
-
-    output logic aout_tvalid,
     input logic aout_tready,
-    
-    input logic pe_token,
-    output logic en
+    input logic token_i,
+
+    output logic ain_tready,
+    output logic aout_tvalid,
+    output logic en,
+    output logic shift_left,
+    output logic token_o
 );
+
+    logic token_sent;
 
     typedef enum logic [1:0] {
         IDLE = 2'b00, 
-        RECEIVE = 2'b01,
-        TRANSMIT = 2'b10 
+        PRIJEM = 2'b01,
+        SLANJE = 2'b10 
     } state_t;
 
     state_t current_state, next_state;
 
-    always_ff @(posedge clk or posedge rst_n) begin
-        if (rst_n) begin
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
             current_state <= IDLE;
+            token_sent <= 1'b0;
         end else begin
             current_state <= next_state;
+            if (current_state == IDLE) begin
+                token_sent <= 1'b0; 
+            end else if (current_state == PRIJEM && ain_tvalid && !token_sent) begin
+                token_sent <= 1'b1;
+            end
         end
     end
 
@@ -34,17 +43,17 @@ module fsm (
         case (current_state)
             IDLE: begin
                 if (ain_tvalid) begin
-                    next_state = RECEIVE;
+                    next_state = PRIJEM;
                 end
             end
-            RECEIVE: begin
+            PRIJEM: begin
                 if (ain_tvalid && ain_tready && ain_tlast) begin
-                    next_state = TRANSMIT;
+                    next_state = SLANJE;
                 end
             end
 
-            TRANSMIT: begin
-                if (aout_tvalid && aout_tready && pe_token) begin
+            SLANJE: begin
+                if (aout_tvalid && aout_tready && token_i) begin
                     next_state = IDLE;
                 end
             end
@@ -57,19 +66,29 @@ module fsm (
         ain_tready = 1'b0;
         aout_tvalid = 1'b0;
         en = 1'b0;
+        shift_left = 1'b0;
+        token_o = 1'b0;
 
         case (current_state)
-            RECEIVE: begin
+            IDLE: begin
+                ain_tready = 1'b0; 
+            end
+            
+            PRIJEM: begin
                 ain_tready = 1'b1;
                 if (ain_tvalid && ain_tready) begin
                     en = 1'b1;
+                    if (!token_sent) begin
+                        token_o = 1'b1;
+                    end
                 end
             end
 
-            TRANSMIT: begin
+            SLANJE: begin
                 aout_tvalid = 1'b1; 
                 if (aout_tvalid && aout_tready) begin
                     en = 1'b1;
+                    shift_left = 1'b1;
                 end
             end
 

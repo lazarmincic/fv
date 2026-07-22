@@ -3,64 +3,120 @@ module pe_array (
     input logic rst,
     input logic en,  
     input logic sort_dir, 
-    input logic ain_tlast,
-    output logic aout_tlast, 
+    input logic shift_left,
 
-    input logic [15:0] a_i,
-    input logic [15:0] b_i,
+    input logic token_left_i,
+    
+    input logic [15:0] a_left_i,
+    input logic [15:0] b_left_i,
 
-    output logic [15:0] a_o,
-    output logic [15:0] b_o
+    output logic [15:0] a_left_o,
+    output logic [15:0] b_left_o,
+
+    output logic token_left_o, 
+    output logic pair_equal
 );
 
-    logic [15:0] wire_1 [0:512];
-    logic [15:0] wire_2 [0:512];
-    logic wire_last [0:512];
-
-    assign wire_1[0] = a_i;
-    assign wire_2[0] = b_i;
-    assign wire_last[0] = ain_tlast;
+    logic [15:0] wire_a_lr [0:511]; // lr - left to right smer
+    logic [15:0] wire_b_lr [0:511];
+    logic [15:0] wire_a_rl [0:511];
+    logic [15:0] wire_b_rl [0:511];
+    logic wire_token_lr [0:511];
+    logic wire_token_rl [0:511];
+    
+    assign wire_a_lr[0] = a_left_i;
+    assign wire_b_lr[0] = b_left_i;
+    assign wire_token_lr[0] = token_left_i;
 
     genvar i;
     generate
         for (i = 0; i < 512; i++) begin : pe_chain
-            if (i == 512 - 1) begin
+            if (i == 0) begin // prvi
                 pe pe (
                     .clk (clk),
                     .rst (rst),
                     .en (en),
                     .sort_dir (sort_dir),
+                    .shift_left (shift_left),
+                    // sa leva na desno
+                    .a_left_i (wire_a_lr[i]),
+                    .b_left_i (wire_b_lr[i]),
+                    .token_left_i (wire_token_lr[i]),
                     
-                    .a_i (wire_1[i]),
-                    .b_i (wire_2[i]),
-                    .last_i (wire_last[i]),
+                    .a_right_o (wire_a_lr[i+1]),
+                    .b_right_o (wire_b_lr[i+1]),
+                    .token_right_o (wire_token_lr[i+1]),
+                    // sa desna na levo
+                    .a_right_i (wire_a_rl[i+1]),
+                    .b_right_i (wire_b_rl[i+1]),
+                    .token_right_i (wire_token_rl[i+1]),
+
+                    .a_left_o (wire_a_rl[i]),
+                    .b_left_o (wire_b_rl[i]),
+                    .token_left_o (wire_token_rl[i]),
+
+                    .is_equal(pair_equal)
+                );
+            end
+            else if (i == 511) begin // poslednji
+                pe pe (
+                    .clk (clk),
+                    .rst (rst),
+                    .en (en),
+                    .sort_dir (sort_dir),
+                    .shift_left (shift_left),
+                    // sa leva na desno
+                    .a_left_i (wire_a_lr[i]),
+                    .b_left_i (wire_b_lr[i]),
+                    .token_left_i (wire_token_lr[i]),
                     
-                    .a_o (),
-                    .b_o (),
-                    .last_o ()
+                    .a_right_o ('0),
+                    .b_right_o ('0),
+                    .token_right_o (1'b0),
+                    // sa desna na levo
+                    .a_right_i ('0),
+                    .b_right_i ('0),
+                    .token_right_i (1'b0),
+
+                    .a_left_o (wire_a_rl[i]),
+                    .b_left_o (wire_b_rl[i]),
+                    .token_left_o (wire_token_rl[i]),
+
+                    .is_equal(1'b0)
                 );
             end
             else begin 
             pe pe (
-                .clk (clk),
-                .rst (rst),
-                .en (en),
-                .sort_dir (sort_dir),
-                
-                .a_i (wire_1[i]),
-                .b_i (wire_2[i]),
-                .last_i (wire_last[i]),
-                
-                .a_o (wire_1[i+1]),
-                .b_o (wire_2[i+1]),
-                .last_o (wire_last[i+1])
+                    .clk (clk),
+                    .rst (rst),
+                    .en (en),
+                    .sort_dir (sort_dir),
+                    .shift_left (shift_left),
+                    // sa leva na desno
+                    .a_left_i (wire_a_lr[i]),
+                    .b_left_i (wire_b_lr[i]),
+                    .token_left_i (wire_token_lr[i]),
+                    
+                    .a_right_o (wire_a_lr[i+1]),
+                    .b_right_o (wire_b_lr[i+1]),
+                    .token_right_o (wire_token_lr[i+1]),
+                    // sa desna na levo
+                    .a_right_i (wire_a_rl[i+1]),
+                    .b_right_i (wire_b_rl[i+1]),
+                    .token_right_i (wire_token_rl[i+1]),
+
+                    .a_left_o (wire_a_rl[i]),
+                    .b_left_o (wire_b_rl[i]),
+                    .token_left_o (wire_token_rl[i]),
+
+                    .is_equal(1'b0)
             );
             end
         end
     endgenerate
 
-    assign a_o = pe_chain[0].pe.reg_a;
-    assign b_o = pe_chain[0].pe.reg_b;
-    assign aout_tlast = pe_chain[0].pe.last_o;
+    assign a_left_o = pe_chain[0].pe.reg_a;
+    assign b_left_o = pe_chain[0].pe.reg_b;
+    assign token_left_o = pe_chain[0].pe.token_left_o;
 
 endmodule
