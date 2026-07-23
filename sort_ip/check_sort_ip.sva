@@ -1,11 +1,56 @@
 module check_sort_ip
   (
-   input clk, input rst
+    input logic clk,
+    input logic rst,
+
+    input logic sort_dir,
+    input logic ain_tvalid,
+    input logic [31:0] ain_tdata,
+    input logic ain_tlast,
+    input logic aout_tready,
+
+    input logic ain_tready,
+    input logic [9:0] dup_nums,
+    input logic aout_tvalid,
+    
+    input logic [31:0] aout_tdata,
+    input logic aout_tlast
    );
 
     default clocking @(posedge clk); endclocking
     default disable iff (rst);
 
-    // mesto za osobine
+    // axi interfejs
+    assume property (sort_dir == ain_tvalid);
+    assume property (ain_tdata >= 0 && ain_tdata <= 1023);
 
+    assume property (ain_tvalid ##0 ~ain_tready ##1 ~ain_tready |-> ain_tdata[*2] );
+
+    logic [9:0] data_t; // 10 bitova jer je ogr. ulaz na do 1023 broja
+    logic [10:0] cnt1; // broji preklapanja valid i ready
+    always_ff @(posedge clk or posedge rst) begin
+      if (rst) begin
+        data_t <= '0;
+        cnt1 <= '0;
+      end else begin
+        data_t <= ain_tdata; // pamti proslu vr
+        if (ain_tvalid && ain_tready) begin
+          cnt1 <= cnt1 + 1'b1;
+        end
+      end
+    end
+
+    /*
+    assume property (ain_tvalid ##0 ~ain_tready ##1 ain_tready |=> ain_tdata != data_t);
+    assume property (ain_tvalid ##0 ain_tready |-> ain_tdata != data_t );
+    assume property (ain_tvalid ##0 ~ain_tready |=> ain_tdata == data_t);//
+    assume property (ain_tvalid ##0 ain_tready ##0 cnt1 == 1024 |-> ain_tlast);
+    //assume property (ain_tvalid[*1:$] |=> ain_tready); // ne valja
+    
+
+    assert property (ain_tvalid |=> ain_tready);
+
+    cover property (aout_tvalid);//
+    */
+      
 endmodule

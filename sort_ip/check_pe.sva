@@ -1,0 +1,20 @@
+module check_pe (
+    input logic clk,
+    input logic rst,
+    input logic en,
+    input logic sort_dir,
+    input logic shift_left,
+    input logic token_left_i,
+    input logic [15:0] a_left_i,
+    input logic [15:0] b_left_i
+);
+
+    default clocking @(posedge clk); endclocking
+    default disable iff (rst);
+
+    assume property (sort_dir == 1'b1); // samo rastuce
+    assume property (shift_left == 1'b0); // samo desno
+    assume property (en == 1'b1);
+    cover property (a_left_i == 16'd6 ##0 b_left_i == 16'd5 ##0 token_left_i ##1 a_left_i == 16'd4 ##0 b_left_i == 16'd3 ##1 a_left_i == 16'd2 ##0 b_left_i == 16'd1 );
+
+endmodule

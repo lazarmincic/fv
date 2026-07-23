@@ -1,1 +1,2 @@
 bind sort_ip check_sort_ip c1 (.*);
+bind pe check_pe c2 (.*);

@@ -37,14 +37,13 @@ module pe (
         b_left_o = 16'b0;
         next_reg_a = reg_a;
         next_reg_b = reg_b;
+        v0 = reg_a;
+        v1 = reg_b;
+        v2 = a_left_i;
+        v3 = b_left_i;
+        t = '0;
 
         if (shift_left == 1'b0) begin // u desno
-            
-
-            v0 = reg_a;
-            v1 = reg_b;
-            v2 = a_left_i;
-            v3 = b_left_i;
 
             if (sort_dir) begin 
                 if (v0 > v1) begin 
@@ -120,16 +119,25 @@ module pe (
         end
     end
 
+    logic first_element;
+
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             reg_a <= '0;
             reg_b <= '0;
             token_left_o <= 1'b0;
             token_right_o <= 1'b0;
+            first_element <= 1'b1;
         end else if (en) begin
-            reg_a <= next_reg_a;
-            reg_b <= next_reg_b;
-
+            if (first_element) begin // samo prvi upis
+                first_element <= 1'b0;
+                reg_a <= a_left_i;
+                reg_b <= b_left_i;
+            end
+            else begin
+                reg_a <= next_reg_a;
+                reg_b <= next_reg_b;
+            end
             token_left_o <= 1'b0;
             token_right_o <= 1'b0;
             if (shift_left) begin
