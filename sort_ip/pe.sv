@@ -18,9 +18,7 @@ module pe (
     output logic [15:0] b_left_o,
     output logic [15:0] b_right_o,
     output logic token_left_o,
-    output logic token_right_o,
-
-    output logic is_equal
+    output logic token_right_o
 );
     logic [15:0] reg_a;
     logic [15:0] reg_b;
@@ -29,15 +27,19 @@ module pe (
     logic [15:0] next_reg_b;
 
     always_comb begin : sort_4_numbers
+
+        logic [15:0] v0, v1, v2, v3; // vrednosti
+        logic [15:0] t; // temp
         // podrazumevane
         a_right_o = 16'b0; 
         b_right_o = 16'b0; 
         a_left_o = 16'b0;
         b_left_o = 16'b0;
+        next_reg_a = reg_a;
+        next_reg_b = reg_b;
 
         if (shift_left == 1'b0) begin // u desno
-            logic [15:0] v0, v1, v2, v3; // vrednosti
-            logic [15:0] t; // temp
+            
 
             v0 = reg_a;
             v1 = reg_b;
@@ -117,8 +119,6 @@ module pe (
             b_left_o = reg_b;
         end
     end
-
-    assign is_equal = a_left_i == b_left_i; // pažnja, 0 == 0 je 1
 
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin

@@ -1,1 +1,1 @@
-bind sort_ip check_sort_ip ctrl (.*);
+bind sort_ip check_sort_ip c1 (.*);
