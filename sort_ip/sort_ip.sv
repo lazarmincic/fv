@@ -16,7 +16,7 @@ module sort_ip
 		output logic [31:0] aout_tdata,
 		output logic aout_tlast
    );
-	logic en, shift_left, token_left_i;
+	logic en, shift_left, token_left_i, set_reg;
 
 	pe_array pe_array_u (
 		.clk (clk),
@@ -26,6 +26,7 @@ module sort_ip
 		.shift_left (shift_left),
 
 		.token_left_i (token_left_i),
+		.set_reg (set_reg),
 		
 		.a_left_i (ain_tdata[15:0]),
 		.b_left_i (ain_tdata[31:16]),
@@ -59,7 +60,8 @@ module sort_ip
 		.aout_tvalid (aout_tvalid),
 		.en (en),
 		.shift_left (shift_left),
-		.token_o (token_left_i)
+		.token_o (token_left_i),
+		.set_reg (set_reg)
 	);
 
 endmodule

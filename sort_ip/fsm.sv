@@ -6,12 +6,14 @@ module fsm (
     input logic ain_tlast,
     input logic aout_tready,
     input logic token_i,
+    input logic sort_dir,
 
     output logic ain_tready,
     output logic aout_tvalid,
     output logic en,
     output logic shift_left,
-    output logic token_o
+    output logic token_o,
+    output logic set_reg
 );
 
     logic token_sent;
@@ -68,6 +70,7 @@ module fsm (
         en = 1'b0;
         shift_left = 1'b0;
         token_o = 1'b0;
+        set_reg = 1'b0;
 
         case (current_state)
             IDLE: begin
@@ -79,7 +82,10 @@ module fsm (
                 if (ain_tvalid && ain_tready) begin
                     en = 1'b1;
                     if (!token_sent) begin
-                        token_o = 1'b1;
+                        token_o = 1'b1; // puls
+                        if (sort_dir) begin
+                            set_reg = 1'b1;
+                        end
                     end
                 end
             end

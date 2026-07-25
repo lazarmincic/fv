@@ -1,4 +1,5 @@
-module check_pe (
+module check_pe #(parameter int SEQ_LEN = 16) // obavezno > 1
+(
     input logic clk,
     input logic rst,
     input logic en,
@@ -6,15 +7,88 @@ module check_pe (
     input logic shift_left,
     input logic token_left_i,
     input logic [15:0] a_left_i,
-    input logic [15:0] b_left_i
+    input logic [15:0] b_left_i,
+    input logic token_right_o,
+    input logic set_reg,
+    input logic [15:0] a_right_o,
+    input logic [15:0] b_right_o
 );
 
     default clocking @(posedge clk); endclocking
     default disable iff (rst);
 
-    assume property (sort_dir == 1'b1); // samo rastuce
-    assume property (shift_left == 1'b0); // samo desno
-    assume property (en == 1'b1);
-    cover property (a_left_i == 16'd6 ##0 b_left_i == 16'd5 ##0 token_left_i ##1 a_left_i == 16'd4 ##0 b_left_i == 16'd3 ##1 a_left_i == 16'd2 ##0 b_left_i == 16'd1 );
+    logic en_cnt; // 1 nakon reseta
+    logic token_cnt;
+    logic [$clog2(SEQ_LEN)-1:0] num_cnt; // ulazni brojevi - npr 0 - 1023
+    logic is_last;
+    logic [15:0] a_left_past, b_left_past;
+    always_ff@(posedge clk or posedge rst) begin
+        if (rst) begin
+            en_cnt <= 1'b0;
+            num_cnt <= '0;
+            a_left_past <= '0;
+            b_left_past <= '0;
+            is_last <= 1'b0;
+            token_cnt <= 1'b0;
+        end
+        else begin
+            a_left_past <= a_left_i;
+            b_left_past <= b_left_i;
+            if (en) begin
+                if (num_cnt == '1) begin
+                    num_cnt    <= '0;
+                    is_last <= 1'b1;
+                end else begin
+                    num_cnt    <= num_cnt + 1'b1;
+                    is_last <= 1'b0;
+                end
+                en_cnt <= 1'b1;
+                if (token_left_i) begin
+                    token_cnt <= 1'b1;
+                end
+            end
+        end
+    end
+
+    // sort dir se ne menja kada je en 1 - kada je shift left 0 vrednost sort dir mora biti nepormenjena za svaki
+    //en, sve dok se
+    
+    assume property (sort_dir); // samo rastuce
+    assume property (~shift_left); // samo desno
+    assume property (en |=> a_left_i != a_left_past); // prethodna vr i tr vr ulaza nisu iste ako je en 1
+    assume property (~en |=> a_left_i == a_left_past); // // prethodna vr i tr vr ulaza su iste ako je en 0
+    assert property (num_cnt == '1 ##0 en |=> is_last ##0 num_cnt == '0); // provera za modeling layer, da li dolazi do of
+    assume property (a_left_i >= 0 && a_left_i <= SEQ_LEN - 1); 
+    assume property (b_left_i >= 0 && b_left_i <= SEQ_LEN - 1); // ogranici vel. ulaza
+    
+        // token se pojavljuje samo jednom, cim se pojavi enable
+    cover property ((
+        a_left_i == 16'd6 ##0 
+        b_left_i == 16'd5 ##0 
+        token_left_i ##1 
+        a_left_i == 16'd4 ##0 
+        b_left_i == 16'd3 ##1 
+        a_left_i == 16'd2 ##0 
+        b_left_i == 16'd1) and en[*3] ##0 en_cnt[*3]); // dovedi set reg
+    
+    assume property (~en |-> ~token_left_i);
+    assume property (token_left_i |=> ~token_left_i);
+    assume property (set_reg |=> ~set_reg);
+    assume property (set_reg |-> en);
+    // set reg se pojavljuje jednom, kada i prvi en
+    assume property (~en_cnt ##0 set_reg ##0 en |=> en_cnt);
+    assume property (en_cnt |-> ~set_reg);
+    assume property (~en |-> ~set_reg);
+    assume property (set_reg |=> en_cnt);
+    assume property (set_reg |-> ~en_cnt);
+    //token sme da se pojavi jednom pri primanju
+    assume property (token_left_i |-> ~token_cnt);
+    // token se ne moze pojaviti ukoliko se vrsi pom u levo
+    //assume property (shift_left |-> ~token_left_i); // 
+    
+    assert property (token_left_i |=> token_right_o);
+    assert property (en ##0 set_reg |=> a_right_o == b_right_o == '1);
+
+    cover property (set_reg and 1'b1[*5]);
 
 endmodule

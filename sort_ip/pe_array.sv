@@ -6,6 +6,7 @@ module pe_array (
     input logic shift_left,
 
     input logic token_left_i,
+    input logic set_reg,
     
     input logic [15:0] a_left_i,
     input logic [15:0] b_left_i,
@@ -41,6 +42,7 @@ module pe_array (
                     .a_left_i (wire_a_lr[i]),
                     .b_left_i (wire_b_lr[i]),
                     .token_left_i (wire_token_lr[i]),
+                    .set_reg (set_reg),
                     
                     .a_right_o (wire_a_lr[i+1]),
                     .b_right_o (wire_b_lr[i+1]),
@@ -65,6 +67,7 @@ module pe_array (
                     .a_left_i (wire_a_lr[i]),
                     .b_left_i (wire_b_lr[i]),
                     .token_left_i (wire_token_lr[i]),
+                    .set_reg (set_reg),
                     
                     .a_right_o (),
                     .b_right_o (),

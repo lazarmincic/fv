@@ -1,2 +1,2 @@
 bind sort_ip check_sort_ip c1 (.*);
-bind pe check_pe c2 (.*);
+bind pe check_pe #(.SEQ_LEN(16)) c2 (.*);
