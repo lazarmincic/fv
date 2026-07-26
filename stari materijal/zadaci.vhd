@@ -53,7 +53,7 @@ end entity zadaci;
 
 architecture beh of zadaci is
 
-signal cnt_s: unsigned (3 downto 0) := X"0";  -- da li moze bez x i navodnika?
+signal cnt_s: unsigned (3 downto 0);  -- da li moze bez x i navodnika?
 
 begin
 

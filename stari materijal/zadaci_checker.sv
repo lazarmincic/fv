@@ -22,40 +22,39 @@ module zadaci_checker (
 	
 	logic rt_1_pao; // pre nego sto padne rt_1 0, nakon sto padne 1
 	logic prvi_ciklus; // prvi ciklus 1, ostali 0
-	logic [2:0] brojac;
+	logic brojac;
+	logic rt_1_inic;
 
 	
 	always_ff @(posedge clk or posedge rst)
 	begin
-		 if (rst)
-			brojac <= 3'b000;
-		 else if(brojac!=3'b111)
-			brojac <= brojac + 3'b001;
-		 else
-			brojac <= 3'b111;
-
-		 if (brojac < 3'b100)
+		 if (rst) begin
+			brojac <= 1'b0;
 			rt_1_pao <= 1'b0;
-		 else
-			rt_1_pao <= 1'b1;
+		 end 
+		 else begin
+			brojac <= 1'b1;
+			if (rt_1 == 1'b0)
+				rt_1_pao <= 1'b1;
+		 end
 	end
-	 
-	assign prvi_ciklus = brojac==3'b000;
+	
+	assign prvi_ciklus = brojac==1'b0;
+	assign rt_1_inic = rt_1 && !rt_1_pao;
 	
 	zad_1a: assert property (prvi_ciklus |-> rt_1);
 
 	//cover property (prvi_ciklus##1~prvi_ciklus);
-	//pada: cover property (rt_1_pao ##1 ~rt_1_pao);
 	//raste: cover property (~rt_1_pao ##1 rt_1_pao);
-	//cover property (brojac==3'b011 ##1 brojac==3'b100);
+	//cover property (brojac==1'b0 ##1 brojac==1'b1);
 
-	zad_1b: assert property ((~rt_1_pao) |-> (rt_1 && ~rdy_1 && ~start_1 && ~endd_1));
+	zad_1b: assert property (rt_1_inic |-> (rt_1 && ~rdy_1 && ~start_1 && ~endd_1));
 
 	zad_2: assert property (er_2[*3:$]|=> ~er_2 );
 
-	zad_3: assert property ((er_3 ##0 rdy_3)|-> ((er_3 ##1 ~er_3) or (rdy_3 ##1 ~rdy_3)));
+	zad_3: assert property ((er_3 ##0 rdy_3) |=> (not (er_3 ##0 rdy_3)));
 	
-	zad_4: assert property (start_4 |-> ##[1:$] rdy_4);
+	zad_4: assert property (not (rdy_4 ##1 start_4));
 	
 	zad_5: assert property ((endd_5 || stop_5 || er_5) |-> (rdy_5 ##1 ~rdy_5));
 
@@ -66,10 +65,12 @@ module zadaci_checker (
 	zad_7: assert property ( endd_7 |-> (~start_7 && ~status_valid_7) );
 
 	zad_8a: assert property (rt_8 |-> ~enable_8);
-	zad_8b: assert property (rt_8 ##1 ~rt_8 |-> ##[3:$] enable_8);
+	zad_8b: assert property (not (rt_8 ##1 ~rt_8 ##[0:1] enable_8));
 
-	zad_9a: assert property (interrupt_9 |-> rdy_9 ##1 ~rdy_9 );
-	zad_9b: assert property (interrupt_9 |-> start_9 ##1 ~start_9);
+	zad_9a: assert property (rdy_9 ##0 interrupt_9 |=> ~rdy_9 );
+	zad_9b: assert property (start_9 ##0 interrupt_9 |=> ~start_9);
+	zad_9c: assert property (rdy_9 ##0 ~interrupt_9 |=> rdy_9);
+	zad_9d: assert property (start_9 ##0 ~interrupt_9 |=> start_9);
 	
 	zad_10: assert property (req_10 |-> ##5 ack_10);
 
