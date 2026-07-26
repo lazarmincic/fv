@@ -145,10 +145,7 @@ module pe (
             end else begin
                 token_right_o <= token_left_i;
             end
-        end else begin
-            reg_a <= sort_dir ? '1 : '0;
-            reg_b <= sort_dir ? '1 : '0;
-        end
+        end  
          
     end
 

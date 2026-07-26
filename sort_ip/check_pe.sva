@@ -11,7 +11,9 @@ module check_pe #(parameter int SEQ_LEN = 16) // obavezno > 1
     input logic token_right_o,
     input logic set_reg,
     input logic [15:0] a_right_o,
-    input logic [15:0] b_right_o
+    input logic [15:0] b_right_o,
+    input logic [15:0] reg_a,
+    input logic [15:0] reg_b
 );
 
     default clocking @(posedge clk); endclocking
@@ -22,6 +24,7 @@ module check_pe #(parameter int SEQ_LEN = 16) // obavezno > 1
     logic [$clog2(SEQ_LEN)-1:0] num_cnt; // ulazni brojevi - npr 0 - 1023
     logic is_last;
     logic [15:0] a_left_past, b_left_past;
+    logic sort_dir_first;
     always_ff@(posedge clk or posedge rst) begin
         if (rst) begin
             en_cnt <= 1'b0;
@@ -30,39 +33,54 @@ module check_pe #(parameter int SEQ_LEN = 16) // obavezno > 1
             b_left_past <= '0;
             is_last <= 1'b0;
             token_cnt <= 1'b0;
+            sort_dir_first <= 1'b0;
         end
         else begin
             a_left_past <= a_left_i;
             b_left_past <= b_left_i;
             if (en) begin
                 if (num_cnt == '1) begin
-                    num_cnt    <= '0;
+                    num_cnt <= '0;
                     is_last <= 1'b1;
                 end else begin
-                    num_cnt    <= num_cnt + 1'b1;
+                    num_cnt <= num_cnt + 1'b1;
                     is_last <= 1'b0;
                 end
-                en_cnt <= 1'b1;
+                if (!shift_left) begin
+                    en_cnt <= 1'b1;
+                end
                 if (token_left_i) begin
                     token_cnt <= 1'b1;
                 end
+                if (!en_cnt)
+                    sort_dir_first <= sort_dir;
             end
         end
     end
 
     // sort dir se ne menja kada je en 1 - kada je shift left 0 vrednost sort dir mora biti nepormenjena za svaki
-    //en, sve dok se
+    // en, sve dok se vrsi primanje / ne pomera u levo - TODO
+    assert property (en && ~en_cnt && sort_dir ##1 1 |=> always $stable(sort_dir_first));
+    assert property (en && ~en_cnt && sort_dir |=> sort_dir_first == $past(sort_dir));
+    assert property (en && ~en_cnt && ~sort_dir ##1 1 |=> always $stable(sort_dir_first));
+    assert property (en && ~en_cnt && ~sort_dir |=> sort_dir_first == $past(sort_dir));
+    assume property (en && en_cnt |-> sort_dir == sort_dir_first);
+
+    // samo desno
+    a1: assume property (~shift_left); 
+    // prethodna vr i tr vr ulaza nisu iste ako je en 1
+    a2: assume property (en |=> a_left_i != a_left_past); 
+    a3: assume property (en |=> b_left_i != b_left_past); 
+    // prethodna vr i tr vr ulaza su iste ako je en 0
+    a4: assume property (~en |=> a_left_i == a_left_past); 
+    a5: assume property (~en |=> b_left_i == b_left_past); 
+    // provera za modeling layer, da li dolazi do of
+    a6: assert property (num_cnt == '1 ##0 en |=> is_last ##0 num_cnt == '0); 
+    // ulazi ograniceni na SEQ_LEN broj vrednosti
+    a7: assume property (a_left_i >= 0 && a_left_i <= SEQ_LEN - 1); 
+    a8: assume property (b_left_i >= 0 && b_left_i <= SEQ_LEN - 1); 
     
-    assume property (sort_dir); // samo rastuce
-    assume property (~shift_left); // samo desno
-    assume property (en |=> a_left_i != a_left_past); // prethodna vr i tr vr ulaza nisu iste ako je en 1
-    assume property (~en |=> a_left_i == a_left_past); // // prethodna vr i tr vr ulaza su iste ako je en 0
-    assert property (num_cnt == '1 ##0 en |=> is_last ##0 num_cnt == '0); // provera za modeling layer, da li dolazi do of
-    assume property (a_left_i >= 0 && a_left_i <= SEQ_LEN - 1); 
-    assume property (b_left_i >= 0 && b_left_i <= SEQ_LEN - 1); // ogranici vel. ulaza
-    
-        // token se pojavljuje samo jednom, cim se pojavi enable
-    cover property ((
+    c9: cover property ((
         a_left_i == 16'd6 ##0 
         b_left_i == 16'd5 ##0 
         token_left_i ##1 
@@ -71,24 +89,40 @@ module check_pe #(parameter int SEQ_LEN = 16) // obavezno > 1
         a_left_i == 16'd2 ##0 
         b_left_i == 16'd1) and en[*3] ##0 en_cnt[*3]); // dovedi set reg
     
-    assume property (~en |-> ~token_left_i);
-    assume property (token_left_i |=> ~token_left_i);
-    assume property (set_reg |=> ~set_reg);
-    assume property (set_reg |-> en);
-    // set reg se pojavljuje jednom, kada i prvi en
-    assume property (~en_cnt ##0 set_reg ##0 en |=> en_cnt);
-    assume property (en_cnt |-> ~set_reg);
-    assume property (~en |-> ~set_reg);
-    assume property (set_reg |=> en_cnt);
-    assume property (set_reg |-> ~en_cnt);
+    // token ne sme da se pojavi kada je en 0
+    a10: assume property (~en |-> ~token_left_i);
+    // token mora trajati 1 ciklus
+    a11: assume property (token_left_i |=> ~token_left_i);
     //token sme da se pojavi jednom pri primanju
-    assume property (token_left_i |-> ~token_cnt);
-    // token se ne moze pojaviti ukoliko se vrsi pom u levo
+    a12: assume property (token_left_i |-> ~token_cnt);
+    // token se ne moze pojaviti ukoliko se vrsi pom u levo - TODO
     //assume property (shift_left |-> ~token_left_i); // 
+    // token se "prenosi" sa levog ulaza na desni izlaz
+    a13: assert property (token_left_i |=> token_right_o);
+    // token right o traje 1 ciklus ukoliko je en aktivan
+    a14: assert property (token_right_o ##0 en |=> ~token_right_o);
     
-    assert property (token_left_i |=> token_right_o);
-    assert property (en ##0 set_reg |=> a_right_o == b_right_o == '1);
+    // set reg mora trajati 1 ciklus
+    a15: assume property (set_reg |=> ~set_reg);
+    // set reg ne sme da se pojavi kada je en 0
+    a16: assume property (~en |-> ~set_reg);
+    // set reg se pojavljuje jednom, kada i prvi en
+    a17: assume property (~en_cnt |-> set_reg);
+    // set reg mora biti 0 ukoliko je en cnt 1
+    a18: assume property (en_cnt |-> ~set_reg);
+    
+    a19: assert property (en && set_reg && sort_dir |-> a_right_o == b_right_o && a_right_o == '1);
+    a20: assert property (en && set_reg && ~sort_dir |-> a_right_o == b_right_o && a_right_o == '0);
 
-    cover property (set_reg and 1'b1[*5]);
+    c21: cover property (set_reg and 1'b1[*5]);
+
+    a22: assert property ((set_reg && token_left_i) |-> (a_right_o == '1 && b_right_o == '1) 
+                        ##1 ((reg_a == a_left_past && reg_b == b_left_past) && (a_left_past <= b_left_past))
+                        || ((reg_a == b_left_past && reg_b == a_left_past) && (a_left_past >= b_left_past)));
+
+    a23: assert property ((set_reg && ~token_left_i) |-> (a_right_o == '1 && b_right_o == '1) 
+                        ##1 (reg_a == '1 && reg_b == '1));
+
+    a24: assert property (sort_dir && en |-> (a_right_o < b_right_o) || (a_right_o == b_right_o == '1));
 
 endmodule
