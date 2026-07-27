@@ -24,18 +24,21 @@ module zadaci_checker (
 	logic prvi_ciklus; // prvi ciklus 1, ostali 0
 	logic brojac;
 	logic rt_1_inic;
-
+	logic start_4_cnt;
 	
 	always_ff @(posedge clk or posedge rst)
 	begin
 		 if (rst) begin
 			brojac <= 1'b0;
 			rt_1_pao <= 1'b0;
+			start_4_cnt <= 1'b0;
 		 end 
 		 else begin
 			brojac <= 1'b1;
 			if (rt_1 == 1'b0)
 				rt_1_pao <= 1'b1;
+			if (start_4)
+				start_4_cnt <= 1'b1;
 		 end
 	end
 	
@@ -54,7 +57,8 @@ module zadaci_checker (
 
 	zad_3: assert property ((er_3 ##0 rdy_3) |=> (not (er_3 ##0 rdy_3)));
 	
-	zad_4: assert property (not (rdy_4 ##1 start_4));
+	zad_4a: assert property (start_4 |=> start_4_cnt);
+	zad_4b: assert property (rdy_4 |=> start_4_cnt);
 	
 	zad_5: assert property ((endd_5 || stop_5 || er_5) |-> (rdy_5 ##1 ~rdy_5));
 
