@@ -21,10 +21,12 @@ module check_sort_ip
     default disable iff (rst);
 
     // axi interfejs
-    assume property (sort_dir == ain_tvalid);
-    assume property (ain_tdata >= 0 && ain_tdata <= 1023);
-
-    assume property (ain_tvalid ##0 ~ain_tready ##1 ~ain_tready |-> ain_tdata[*2] );
+    // sort dir prati valid
+    //assume property (sort_dir == ain_tvalid);
+    // ogranici opseg ulaza
+    //assume property (ain_tdata >= 0 && ain_tdata <= 1023);
+    // dok se ne desi handshake valid data last i sort dir ostaju isti
+    //assume property (ain_tvalid ##0 ~ain_tready ##1 ~ain_tready |-> ain_tdata[*2] );
 
     logic [9:0] data_t; // 10 bitova jer je ogr. ulaz na do 1023 broja
     logic [10:0] cnt1; // broji preklapanja valid i ready

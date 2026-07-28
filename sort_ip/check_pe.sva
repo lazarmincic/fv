@@ -17,7 +17,9 @@ module check_pe #(parameter int SEQ_LEN = 16) // obavezno > 1
     input logic [15:0] a_left_o,
     input logic [15:0] b_left_o,
     input logic token_right_i,
-    input logic token_left_o
+    input logic token_left_o,
+    input logic [15:0] a_right_i,
+    input logic [15:0] b_right_i
 );
 
     default clocking @(posedge clk); endclocking
@@ -143,6 +145,9 @@ module check_pe #(parameter int SEQ_LEN = 16) // obavezno > 1
 
     a29: assert property (shift_left |-> a_left_o == reg_a);
     a32: assert property (shift_left |-> b_left_o == reg_b);
-    //a31: assert property ([->2] shift_left  |-> a_right_o );
+    // ukoliko je shift left visok, vrsi se pomeranje levo
+    a31: assert property (shift_left |=> reg_a == $past(a_right_i));
+    a33: assert property (shift_left |=> reg_b == $past(b_right_i));
+    a34: assert property (shift_left |-> reg_a == a_left_o && reg_b == b_left_o);
 
 endmodule

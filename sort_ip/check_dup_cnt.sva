@@ -1,0 +1,28 @@
+module check_dup_cnt 
+(
+    input logic clk,
+    input logic rst,
+    input logic shift_left,
+    input logic [15:0] a_i,
+    input logic [15:0] b_i,
+
+    input logic [9:0] dup_cnt_o // log2(1024)
+);
+
+    default clocking @(posedge clk); endclocking
+    default disable iff (rst);
+
+    bit sort_dir; // 1 - rastuce
+
+    c1: cover property (shift_left [*5]);
+    // ulazi su sortirani
+    r2: assume property (always sort_dir or always ~sort_dir);
+    r1: assume property (sort_dir |-> a_i >= $past(a_i));
+    r4: assume property (sort_dir |-> b_i >= $past(b_i));
+    r3: assume property (~sort_dir |-> a_i <= $past(a_i));
+    r5: assume property (~sort_dir |-> b_i <= $past(b_i));
+    a1: assert property (shift_left && a_i == b_i ##1 a_i!=$past(a_i) && b_i!=$past(b_i)
+                            |-> dup_cnt_o == $past(dup_cnt_o) + 1);
+    // greska - dva ciklusa istih brojeva uzastopce
+
+endmodule

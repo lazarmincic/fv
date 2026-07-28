@@ -1,0 +1,133 @@
+module check_fsm #(parameter int SEQ_LEN = 16) (
+    input logic clk,
+    input logic rst,
+    input logic ain_tvalid,
+    input logic ain_tlast,
+    input logic aout_tready,
+    input logic token_i, // aout_tlast
+    input logic sort_dir,
+
+    input logic ain_tready,
+    input logic aout_tvalid,
+    input logic en,
+    input logic shift_left,
+    input logic token_o,
+    input logic set_reg,
+
+    input logic token_sent,
+    input logic [1:0] current_state 
+);
+    typedef enum logic [1:0] {
+        IDLE = 2'b00, 
+        PRIJEM = 2'b01,
+        SLANJE = 2'b10 
+    } state_t;
+
+    default clocking @(posedge clk); endclocking
+    default disable iff (rst);
+
+    logic rx, rx_of, tx_of;  // overflow
+    logic [$clog2(SEQ_LEN)-1:0] rx_num;
+    logic [$clog2(SEQ_LEN)-1:0] tx_num;
+    logic token_o_cnt, token_i_cnt;
+    always_ff@(posedge clk or posedge rst) begin
+        if (rst) begin
+            rx <= 1'b0;
+            rx_num <= '0;
+            rx_of <= 1'b0;
+            tx_num <= '0;
+            tx_of <= 1'b0;
+            token_o_cnt <= 1'b0;
+            token_i_cnt <= 1'b0;
+        end else begin
+            rx_of <= 1'b0;
+            if (ain_tvalid && ain_tready) begin
+                rx_num <= rx_num + 1'b1;
+                if (rx_num == '1) begin
+                    rx_num <= '0;
+                    rx_of <= 1'b1;
+                end
+            end
+            tx_of <= 1'b0;
+            if (aout_tvalid && aout_tready) begin
+                tx_num <= tx_num + 1'b1;
+                if (tx_num == '1) begin
+                    tx_num <= '0;
+                    tx_of <= 1'b1;
+                end
+            end
+            
+            if (ain_tvalid && ~aout_tvalid) begin
+                rx <= 1'b1;
+            end
+            if (ain_tlast && ain_tready) begin
+                rx <= 1'b0;
+            end
+            if (token_o) begin
+                token_o_cnt <= 1'b1;
+            end
+            if (token_i) begin
+                token_i_cnt <= 1'b1;
+            end
+            if (current_state == IDLE) begin
+                token_o_cnt <= 1'b0;
+                token_i_cnt <= 1'b0;
+            end
+        end
+    end
+
+    // valid mora ostati 1 sve dok se ne pojavi ready
+    a1: assume property (ain_tvalid && ~ain_tready |=> ain_tvalid);
+    
+    // izmedju prvog valida i last-a ready treba da je 1
+    a9: assert property (ain_tvalid && ~rx && current_state == IDLE |=> rx s_until_with ain_tlast);
+    // obezbedi da se last sigurno desi
+    a10: assume property (ain_tvalid |-> s_eventually ain_tlast);
+    // last sme da se podigne samo ako je valid 1
+    a11: assume property (ain_tlast |-> ain_tvalid);
+    a12: assert property (ain_tlast && ain_tvalid && ain_tready |=> current_state == SLANJE);
+    // drugi valid 
+    a13: assert property (rx && ain_tvalid |-> current_state == PRIJEM);
+    // last ne sme da se menja ukoliko nije stigao ready (izvrsen handshake)
+    a14: assume property (ain_tvalid && ain_tlast && ~ain_tready |=> ain_tlast);
+    // sva stanja mogu biti dosegnuta
+    // TODO
+    a2: assert property (ain_tready |-> rx);
+    a3: assume property (ain_tlast && ain_tready |=> ~ain_tlast && ~ain_tready && ~ain_tvalid);
+    a6: assert property (ain_tlast && ain_tready |=> aout_tvalid);
+    a7: assume property (~aout_tready && aout_tvalid |=> s_eventually (aout_tready && aout_tvalid));
+    a8: assume property (token_i && aout_tvalid && aout_tready |=> ~token_i);
+    // onoliko koliko podataka udje, toliko mora i izaci
+    // brojevi ciklusa kada se preklapaju valid ready i current state == prijem
+    // mora biti jednak .. valid ready current state== slanje
+    // brojac - broji te cikluse
+    // u asuume ih poredi
+    a15: assert property (rx_num == '1 && ain_tvalid && ain_tready |=> rx_of);
+    a16: assert property (rx_of |=> ~rx_of);
+    // ogranici duzinu prijema
+    a17: assume property (current_state == PRIJEM |-> s_eventually rx_of);
+    a18: assume property (current_state == SLANJE |-> s_eventually tx_of);
+    // token o mora da traje 1 ciklus
+    a19: assert property (token_o |=> ~token_o);
+    a20: assert property (current_state == PRIJEM && $past(current_state) == IDLE |-> token_o );
+    // samo jedan token u toku celog prenosa
+    a21: assert property (token_o |-> ~token_o_cnt);
+    a22: assert property (en |-> current_state == PRIJEM || current_state == SLANJE);
+    a23: assert property (set_reg |-> token_o);
+    a24: assert property (set_reg |-> sort_dir);
+    // jedan takodje tokom celog prenosa 
+    a25: assert property (set_reg |-> ~token_o_cnt);
+    // ogranici token i
+    a28: assume property (token_i |=> tx_of);
+    a33: assume property (tx_of |-> $past(token_i));
+    a31: assert property (tx_num == '1 && aout_tvalid && aout_tready |=> tx_of);
+    a32: assert property (tx_of |=> ~tx_of);
+    // token i desava se samo jednom tokom prenosa
+    a30: assume property (token_i |-> ~token_i_cnt);
+    a26: assert property (token_o |-> s_eventually token_i);
+    a27: assert property (current_state == PRIJEM |-> s_eventually shift_left);
+    a29: assert property (current_state == PRIJEM throughout rx_num == 0 ##1 rx_num == 1 |-> $past(token_o));
+    a34: assume property (ain_tlast |=> rx_of);
+    a35: assume property (rx_of |-> $past(ain_tlast));
+
+endmodule
