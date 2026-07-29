@@ -10,7 +10,7 @@ module zadaci_checker (
 		input rt_8,input enable_8,
 		input rdy_9,input start_9,input interrupt_9,
 		input ack_10,input req_10
-	) ;
+	);
 
 
 	default
@@ -45,6 +45,7 @@ module zadaci_checker (
 	assign prvi_ciklus = brojac==1'b0;
 	assign rt_1_inic = rt_1 && !rt_1_pao;
 	
+	zad_c: cover property (1[*12]);
 	zad_1a: assert property (prvi_ciklus |-> rt_1);
 
 	//cover property (prvi_ciklus##1~prvi_ciklus);
