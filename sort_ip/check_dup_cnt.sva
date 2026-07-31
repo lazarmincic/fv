@@ -14,15 +14,27 @@ module check_dup_cnt
 
     bit sort_dir; // 1 - rastuce
 
+    // obranici ulaze
+    r7: assume property (a_i >= 0 && a_i <= 1023);
+    r8: assume property (b_i >= 0 && b_i <= 1023);
     c1: cover property (shift_left [*5]);
-    // ulazi su sortirani
-    r2: assume property (always sort_dir or always ~sort_dir);
-    r1: assume property (sort_dir |-> a_i >= $past(a_i));
-    r4: assume property (sort_dir |-> b_i >= $past(b_i));
-    r3: assume property (~sort_dir |-> a_i <= $past(a_i));
-    r5: assume property (~sort_dir |-> b_i <= $past(b_i));
-    a1: assert property (shift_left && a_i == b_i ##1 a_i!=$past(a_i) && b_i!=$past(b_i)
-                            |-> dup_cnt_o == $past(dup_cnt_o) + 1);
-    // greska - dva ciklusa istih brojeva uzastopce
+    // ulazi su sortirani - a b a b a b a b u zavisnosti od sort dir
+    r2: assume property ($stable(sort_dir));
+    r10: assume property (sort_dir |-> a_i <= b_i);
+    r11: assume property (~sort_dir |-> a_i >= b_i);
+    r9: assume property (~shift_left |-> $stable(a_i) && $stable(b_i));
+    r1: assume property (sort_dir && shift_left |->  a_i >= $past(b_i));
+    r3: assume property (~sort_dir && shift_left |-> a_i <= $past(b_i));
+    // 1 slucaj - duplikati se nalaze samo u taktu
+    a1: assert property (shift_left && a_i == b_i && $past(b_i)!=a_i |=> dup_cnt_o == $past(dup_cnt_o) + 1'b1);
+    // 2 slucaj - duplikati samo izmedju taktova
+    a2: assert property (shift_left && a_i != b_i && $past(b_i)==a_i |=> dup_cnt_o == $past(dup_cnt_o) + 1'b1); // pada
+    // 3 slucaj - duplikati i u ovom i izmedju taktova
+    a3: assert property (shift_left && a_i == b_i && $past(b_i)==a_i |=> dup_cnt_o == $past(dup_cnt_o) + 2'd2); // pada
+    //4 slucaj - bez duplikata
+    a4: assert property (shift_left && a_i != b_i && $past(b_i)!=a_i |=> 
+                         $stable(dup_cnt_o) );
+
+    // TODO zlatni model za brojenje duplikata
 
 endmodule
