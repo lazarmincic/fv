@@ -3,7 +3,7 @@
 // S = 4 3s sa J endzinom
 // S = 5 ?
 
-module panex #(parameter int S = 2) ( 
+module panex #(parameter int S = 1) ( //radi za S>=1
 	input clk,
 	input rst,
 	input [1:0] fr,
@@ -104,32 +104,45 @@ module panex #(parameter int S = 2) (
 	assume property (to != 2'b11);
 	assume property (fr != 2'b11);
 	//kraj, resenje - cover tacka sa obrnute dve kule
-	cover_solved: cover property (solved == 1'b1);
+	c_solved: cover property (solved == 1'b1);
 	//cover property ((fr==0 ##1 fr==0 ##1 fr==1 ##1 fr==0) and (to==2 ##1 to==1 ##1 to==0 ##1 to==1)); sanity check 1 - radi
 	assume property (fr!=to);
 	//assume da se ne moze prebacivati sa praznog stapa, ne moze se prebaciti na pun
-	assume property (top_index[fr] >=4'sb0 && (top_index[to]<S));
+	assume property (top_index[fr] >= 0);
+	assume property ( to!= middle |-> top_index[to]<S);
 	assert property (top_index[middle] < S && sticks[middle][S].color == empty);
 	// gore u sredinu ne moze da se stavi disk
-	assume property (to == middle |-> top_index[to]<S-1);
+	assume property ( to == middle |-> top_index[to]<S-1);
 	//cover property (top_index[middle]==1); SANITY CHECK 2 - RADI
 	
 	// kada se resi dalje ne diraj nista
 	assert property (solved |=> $stable(sticks) && $stable(top_index));
-	assume property (solved |-> $stable(fr) && $stable(to));
-	//assert property (); // ne sme da se desi da se indeksira negativan disk
-	cover property (1[*10]);
+	assume property (solved |=> $stable(fr) && $stable(to));
+	assert property (top_index[left]>=-1 && top_index[middle]>=-1 && top_index[right]>=-1); // ne sme da se desi da se indeksira negativan disk
+	cover property (1[*20]);
 	// ako si prebacio sa jednog na drugi, ne prebacuj sledece sa drugog na prvi
 	// spreci A->B->A
-	assume property (!(fr == $past(to) && to == $past(fr)));
-	assume property (top_index[fr] >= 0);
+	assert property (!(fr == $past(to) && to == $past(fr)));
 	// spreci A->B->C (nateraj ga da uradi A->C)
-	assume property (!(fr == $past(to) && $past(fr) == $past(to,2) && to == $past(fr,2)));
+	assert property (!(fr == $past(to) && $past(fr) == $past(to,2) && to == $past(fr,2)));
 	// zabrani uzastopno pomeranje istog diska
-	assume property (!(fr == $past(to)));
-	// ogranici ekvivalentne poteze TODO
+	assume property ((!(fr == $past(to))));
+	// ogranici ekvivalentne poteze 
 	// A-B isto sto i A-C premestas jedan disk, pa drugi, i rezultat je isti
-	//assume property (can_move_from_0_to_1 && can_move_from_2_to_1 && is_independent) |-> (fr != 2);
+	//assume property (!solved |-> s_eventually ({fr,to}[*(S-1)])); // ne, usporava za 3 diska
+	/*
+	// smanji prostor stanja - ovo zapravo usporava sim.
+	generate
+		for (genvar d = 0; d < S+1; d++)  // disk
+			for (genvar s = 0; s < 3; s++) begin// stap 0 1 2 
+				assume property (sticks[s][d].color != 2'b11);
+				assume property (!(top_index[s]<-1));
+			end
+	endgenerate
+	assume property ($stable(sticks[middle][S])); // izbaci vrh srednjeg
+	*/
+	// ukupan broj diskova u sistemu je uvek S+S
+	// ...
 
 endmodule
 
