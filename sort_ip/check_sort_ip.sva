@@ -1,33 +1,38 @@
-module check_sort_ip
+module check_sort_ip 
+  #(
+		parameter int DATA_WIDTH = 16,
+		parameter int LENGTH = 1024
+	)
   (
     input logic clk,
     input logic rst,
 
     input logic sort_dir,
     input logic ain_tvalid,
-    input logic [31:0] ain_tdata,
+    input logic [DATA_WIDTH*2-1:0] ain_tdata,
     input logic ain_tlast,
     input logic aout_tready,
 
     input logic ain_tready,
-    input logic [9:0] dup_nums,
+    input logic [$clog2(LENGTH)-1:0] dup_nums,
     input logic aout_tvalid,
     
-    input logic [31:0] aout_tdata,
+    input logic [DATA_WIDTH*2-1:0] aout_tdata,
     input logic aout_tlast
-   );
+  );
 
     default clocking @(posedge clk); endclocking
     default disable iff (rst);
 
     // axi interfejs
     // sort dir prati valid
-    //assume property (sort_dir == ain_tvalid);
+    //assume property (ain_tvalid [->2] |-> );
     // ogranici opseg ulaza
     //assume property (ain_tdata >= 0 && ain_tdata <= 1023);
     // dok se ne desi handshake valid data last i sort dir ostaju isti
     //assume property (ain_tvalid ##0 ~ain_tready ##1 ~ain_tready |-> ain_tdata[*2] );
 
+/*
     logic [9:0] data_t; // 10 bitova jer je ogr. ulaz na do 1023 broja
     logic [10:0] cnt1; // broji preklapanja valid i ready
     always_ff @(posedge clk or posedge rst) begin
@@ -41,6 +46,7 @@ module check_sort_ip
         end
       end
     end
+*/
 
     /*
     assume property (ain_tvalid ##0 ~ain_tready ##1 ain_tready |=> ain_tdata != data_t);
@@ -54,5 +60,11 @@ module check_sort_ip
 
     cover property (aout_tvalid);//
     */
+
+    // set reg mora uvek da se desi pre ready (i) ja
+    // clear uvek mora da se desi pre valida (o)
+    // fsm nikada ne sme da je u stanju 11
+
+    // mora se dodati assume na mestima gde su iseceni registri
       
 endmodule

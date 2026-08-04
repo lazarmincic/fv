@@ -1,4 +1,8 @@
-module pe_array (
+module pe_array 
+#(  parameter int DATA_WIDTH = 16,
+    parameter int LENGTH = 1024
+)
+(
     input logic clk,
     input logic rst,
     input logic en,  
@@ -8,21 +12,21 @@ module pe_array (
     input logic token_left_i,
     input logic set_reg,
     
-    input logic [15:0] a_left_i,
-    input logic [15:0] b_left_i,
+    input logic [DATA_WIDTH-1:0] a_left_i,
+    input logic [DATA_WIDTH-1:0] b_left_i,
 
-    output logic [15:0] a_left_o,
-    output logic [15:0] b_left_o,
+    output logic [DATA_WIDTH-1:0] a_left_o,
+    output logic [DATA_WIDTH-1:0] b_left_o,
 
     output logic token_left_o
 );
 
-    logic [15:0] wire_a_lr [0:511]; // lr - left to right smer
-    logic [15:0] wire_b_lr [0:511];
-    logic [15:0] wire_a_rl [0:511];
-    logic [15:0] wire_b_rl [0:511];
-    logic wire_token_lr [0:511];
-    logic wire_token_rl [0:511];
+    wire [DATA_WIDTH-1:0] wire_a_lr [0:LENGTH/2-1]; // lr - left to right smer
+    wire [DATA_WIDTH-1:0] wire_b_lr [0:LENGTH/2-1];
+    wire [DATA_WIDTH-1:0] wire_a_rl [0:LENGTH/2-1];
+    wire [DATA_WIDTH-1:0] wire_b_rl [0:LENGTH/2-1];
+    wire wire_token_lr [0:LENGTH/2-1];
+    wire wire_token_rl [0:LENGTH/2-1];
     
     assign wire_a_lr[0] = a_left_i;
     assign wire_b_lr[0] = b_left_i;
@@ -30,9 +34,9 @@ module pe_array (
 
     genvar i;
     generate
-        for (i = 0; i < 512; i++) begin : pe_chain
-            if (i != 511) begin 
-            pe pe (
+        for (i = 0; i < LENGTH/2; i++) begin : pe_chain
+            if (i != LENGTH/2-1) begin 
+            pe #(.DATA_WIDTH (DATA_WIDTH)) pe_u (
                     .clk (clk),
                     .rst (rst),
                     .en (en),
@@ -57,7 +61,7 @@ module pe_array (
                     .token_left_o (wire_token_rl[i])
             );
             end else begin // poslednji
-                pe pe (
+                pe #(.DATA_WIDTH (DATA_WIDTH)) pe_u (
                     .clk (clk),
                     .rst (rst),
                     .en (en),

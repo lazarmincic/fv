@@ -1,4 +1,1 @@
-bind sort_ip check_sort_ip c1 (.*);
-bind pe check_pe #(.SEQ_LEN(16)) c2 (.*);
-bind fsm check_fsm #(.SEQ_LEN(16)) c3 (.*);
-bind dup_cnt check_dup_cnt c4 (.*);
+bind sort_ip check_sort_ip #(.DATA_WIDTH(DATA_WIDTH), .LENGTH(LENGTH)) c (.*);

@@ -1,24 +1,32 @@
 module sort_ip
+	#(
+		parameter int DATA_WIDTH = 16, //7
+		parameter int LENGTH = 1024 //128
+	)
   	(
 		input logic clk,
 		input logic rst,
 
 		input logic sort_dir,
 		input logic ain_tvalid,
-		input logic [31:0] ain_tdata,
+		input logic [DATA_WIDTH*2-1:0] ain_tdata,
 		input logic ain_tlast,
 		input logic aout_tready,
 
 		output logic ain_tready,
-		output logic [9:0] dup_nums,
+		output logic [$clog2(LENGTH)-1:0] dup_nums,
 		output logic aout_tvalid,
 		
-		output logic [31:0] aout_tdata,
+		output logic [DATA_WIDTH*2-1:0] aout_tdata,
 		output logic aout_tlast
    );
-	logic en, shift_left, token_left_i, set_reg;
+	logic en, shift_left, token_left_i, set_reg, clear;
 
-	pe_array pe_array_u (
+	pe_array #(
+		.DATA_WIDTH (DATA_WIDTH),
+		.LENGTH (LENGTH)
+	) 
+	pe_array_u (
 		.clk (clk),
 		.rst (rst),
 		.en (en),  
@@ -28,21 +36,26 @@ module sort_ip
 		.token_left_i (token_left_i),
 		.set_reg (set_reg),
 		
-		.a_left_i (ain_tdata[15:0]),
-		.b_left_i (ain_tdata[31:16]),
+		.a_left_i (ain_tdata[DATA_WIDTH-1:0]),
+		.b_left_i (ain_tdata[DATA_WIDTH*2-1:DATA_WIDTH]),
 
-		.a_left_o (aout_tdata[15:0]),
-		.b_left_o (aout_tdata[31:16]),
+		.a_left_o (aout_tdata[DATA_WIDTH-1:0]),
+		.b_left_o (aout_tdata[DATA_WIDTH*2-1:DATA_WIDTH]),
 
 		.token_left_o (aout_tlast)
 	);
 
-	dup_cnt dup_cnt_u (
+	dup_cnt #(
+		.DATA_WIDTH (DATA_WIDTH),
+		.LENGTH (LENGTH)
+	)
+	 dup_cnt_u (
 		.clk (clk),
 		.rst (rst),
 		.shift_left (shift_left),
-		.a_i (aout_tdata[15:0]),
-		.b_i (aout_tdata[31:16]),
+		.a_i (aout_tdata[DATA_WIDTH-1:0]),
+		.b_i (aout_tdata[DATA_WIDTH*2-1:DATA_WIDTH]),
+		.clear (clear),
 		
 		.dup_cnt_o(dup_nums)
 	);
@@ -55,13 +68,15 @@ module sort_ip
 		.ain_tlast (ain_tlast),
 		.aout_tready (aout_tready),
 		.token_i (aout_tlast),
+		.sort_dir (sort_dir),
 
 		.ain_tready (ain_tready),
 		.aout_tvalid (aout_tvalid),
 		.en (en),
 		.shift_left (shift_left),
 		.token_o (token_left_i),
-		.set_reg (set_reg)
+		.set_reg (set_reg),
+		.clear (clear)
 	);
 
 endmodule

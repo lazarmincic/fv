@@ -1,36 +1,39 @@
 //processing element
-module pe (
+module pe 
+#(  parameter int DATA_WIDTH = 16
+)
+(
     input logic clk,
     input logic rst,
     input logic en,
     input logic sort_dir,
     input logic shift_left,
     
-    input logic [15:0] a_left_i,
-    input logic [15:0] a_right_i,
-    input logic [15:0] b_left_i,
-    input logic [15:0] b_right_i,
+    input logic [DATA_WIDTH-1:0] a_left_i,
+    input logic [DATA_WIDTH-1:0] a_right_i,
+    input logic [DATA_WIDTH-1:0] b_left_i,
+    input logic [DATA_WIDTH-1:0] b_right_i,
     input logic token_left_i,
     input logic token_right_i,
     input logic set_reg,
 
-    output logic [15:0] a_left_o,
-    output logic [15:0] a_right_o,
-    output logic [15:0] b_left_o,
-    output logic [15:0] b_right_o,
+    output logic [DATA_WIDTH-1:0] a_left_o,
+    output logic [DATA_WIDTH-1:0] a_right_o,
+    output logic [DATA_WIDTH-1:0] b_left_o,
+    output logic [DATA_WIDTH-1:0] b_right_o,
     output logic token_left_o,
     output logic token_right_o
 );
-    logic [15:0] reg_a;
-    logic [15:0] reg_b;
+    logic [DATA_WIDTH-1:0] reg_a;
+    logic [DATA_WIDTH-1:0] reg_b;
 
-    logic [15:0] next_reg_a;
-    logic [15:0] next_reg_b;
+    logic [DATA_WIDTH-1:0] next_reg_a;
+    logic [DATA_WIDTH-1:0] next_reg_b;
 
     always_comb begin : sort_4_numbers
 
-        logic [15:0] v0, v1, v2, v3; // vrednosti
-        logic [15:0] t; // temp
+        logic [DATA_WIDTH-1:0] v0, v1, v2, v3; // vrednosti
+        logic [DATA_WIDTH-1:0] t; // temp
         // podrazumevane
         a_right_o = sort_dir ? '1 : '0; 
         b_right_o = sort_dir ? '1 : '0; 
@@ -38,13 +41,10 @@ module pe (
         b_left_o = 16'b0;
         next_reg_a = reg_a;
         next_reg_b = reg_b;
-        if (set_reg) begin
-            v0 = '1; 
-            v1 = '1; 
-        end else begin
-            v0 = reg_a;
-            v1 = reg_b;
-        end
+        
+        v0 = reg_a;
+        v1 = reg_b;
+        
         v2 = a_left_i;
         v3 = b_left_i;
         t = '0;
@@ -130,6 +130,9 @@ module pe (
             reg_b <= '0;
             token_left_o <= 1'b0;
             token_right_o <= 1'b0;
+        end else if (set_reg) begin
+            reg_a <= '1;
+            reg_b <= '1;
         end else if (en) begin
             reg_a <= next_reg_a;
             reg_b <= next_reg_b;

@@ -1,3 +1,5 @@
+// set reg  se desava u prelazu izmedju idle i slanje
+
 module fsm (
     input logic clk,
     input logic rst,
@@ -13,7 +15,8 @@ module fsm (
     output logic en,
     output logic shift_left,
     output logic token_o,
-    output logic set_reg
+    output logic set_reg,
+    output logic clear
 );
 
     logic token_sent;
@@ -42,15 +45,21 @@ module fsm (
 
     always_comb begin
         next_state = current_state;
+        set_reg = 1'b0;
+        clear = 1'b0;
         case (current_state)
             IDLE: begin
                 if (ain_tvalid) begin
                     next_state = PRIJEM;
+                    if (sort_dir) 
+                        set_reg = 1'b1;
+                    
                 end
             end
             PRIJEM: begin
                 if (ain_tvalid && ain_tready && ain_tlast) begin
                     next_state = SLANJE;
+                    clear = 1'b1;
                 end
             end
 
@@ -70,7 +79,6 @@ module fsm (
         en = 1'b0;
         shift_left = 1'b0;
         token_o = 1'b0;
-        set_reg = 1'b0;
 
         case (current_state)
             IDLE: begin
@@ -83,9 +91,7 @@ module fsm (
                     en = 1'b1;
                     if (!token_sent) begin
                         token_o = 1'b1; // puls
-                        if (sort_dir) begin
-                            set_reg = 1'b1;
-                        end
+                        
                     end
                 end
             end

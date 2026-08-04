@@ -1,13 +1,52 @@
-module check_dup_cnt 
+module check_dup_cnt #(parameter int SEQ_LEN = 16)
 (
     input logic clk,
     input logic rst,
     input logic shift_left,
     input logic [15:0] a_i,
     input logic [15:0] b_i,
+    input logic clear,
 
     input logic [9:0] dup_cnt_o // log2(1024)
 );
+
+    bit shift_left_c;
+    bit [$clog2(SEQ_LEN)-1:0] en_c; // shift left je en za modul d c
+    logic [15:0] history [0:SEQ_LEN-1];
+    bit [$clog2(SEQ_LEN)-1:0] elem_c;
+
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            shift_left_c <= 1'b0;
+            elem_c <= '0;
+            for (int i = 0; i < SEQ_LEN; i++) history[i] <= '0;
+            en_c <= '0;
+        end
+        else if (clear) begin
+            elem_c <= '0;
+            for (int i = 0; i < SEQ_LEN; i++) history[i] <= '0;
+            en_c <= '0;
+        end
+        else if (shift_left) begin
+            shift_left_c <= 1'b1;
+            en_c <= en_c + 1'b1;
+            history[elem_c] <= a_i;
+            history[elem_c+1'b1] <= b_i;
+            elem_c <= elem_c + 2'd2;
+        end
+    end
+
+    bit [SEQ_LEN-1:0] dups;
+    always_comb begin
+        dups = '0;
+        if (elem_c >= 2) begin
+            for (bit [$clog2(SEQ_LEN)-1:0] i = '0; i < elem_c - 1'b1; i++) begin
+                if (history[i] == history[i+1]) begin
+                    dups = dups + 1'b1;
+                end
+            end
+        end
+    end
 
     default clocking @(posedge clk); endclocking
     default disable iff (rst);
@@ -15,8 +54,8 @@ module check_dup_cnt
     bit sort_dir; // 1 - rastuce
 
     // obranici ulaze
-    r7: assume property (a_i >= 0 && a_i <= 1023);
-    r8: assume property (b_i >= 0 && b_i <= 1023);
+    r7: assume property (a_i >= 0 && a_i <= SEQ_LEN - 1);
+    r8: assume property (b_i >= 0 && b_i <= SEQ_LEN - 1);
     c1: cover property (shift_left [*5]);
     // ulazi su sortirani - a b a b a b a b u zavisnosti od sort dir
     r2: assume property ($stable(sort_dir));
@@ -26,15 +65,35 @@ module check_dup_cnt
     r1: assume property (sort_dir && shift_left |->  a_i >= $past(b_i));
     r3: assume property (~sort_dir && shift_left |-> a_i <= $past(b_i));
     // 1 slucaj - duplikati se nalaze samo u taktu
-    a1: assert property (shift_left && a_i == b_i && $past(b_i)!=a_i |=> dup_cnt_o == $past(dup_cnt_o) + 1'b1);
+    a1: assert property ( a_i == b_i && $past(b_i)!=a_i |=> (dup_cnt_o == $past(dup_cnt_o) + 1'b1));
     // 2 slucaj - duplikati samo izmedju taktova
-    a2: assert property (shift_left && a_i != b_i && $past(b_i)==a_i |=> dup_cnt_o == $past(dup_cnt_o) + 1'b1); // pada
+    a2: assert property (shift_left_c && a_i != b_i && $past(b_i)==a_i |=> dup_cnt_o == ($past(dup_cnt_o) + 1'b1)); // pada
     // 3 slucaj - duplikati i u ovom i izmedju taktova
-    a3: assert property (shift_left && a_i == b_i && $past(b_i)==a_i |=> dup_cnt_o == $past(dup_cnt_o) + 2'd2); // pada
+    a3: assert property (shift_left_c && a_i == b_i && $past(b_i)==a_i && shift_left |=> dup_cnt_o == ($past(dup_cnt_o) + 2'd2)); // pada
     //4 slucaj - bez duplikata
-    a4: assert property (shift_left && a_i != b_i && $past(b_i)!=a_i |=> 
+    a4: assert property ( a_i != b_i && $past(b_i)!=a_i |=> 
                          $stable(dup_cnt_o) );
+    a5: assert property (~shift_left |=> $stable(dup_cnt_o));
 
-    // TODO zlatni model za brojenje duplikata
+    // sve dok se ne pojavi shift left prvi put, vrednosti nisu validne
+    // kad je shift left c 1 bezbedno je uporedjivati vrednosti medju taktovima
+
+    // zlatni model za brojenje duplikata
+    // ogranici vrednosti iz history
+    generate
+        for (genvar i = 0; i<SEQ_LEN; i++)
+            r12: assume property (history[i] >= 0 && history[i] <= SEQ_LEN - 1);
+    endgenerate
+    // nakon sto se shift left pojavio S L puta 
+    assert property (shift_left[->(SEQ_LEN/2)]|->dups==dup_cnt_o);
+    // nakon sto prodje sekvenca en se mora spustiti
+    assume property (shift_left[->(SEQ_LEN/2)]|=> ~shift_left);
+    // TODO u nastavku ukloni ovaj assume
+    //TODO shift left se moze pojaviti nakon sto se spustio
+    // poslednje radjeno - dodat clr signal kao izlaz fsm a i ulaz u dup cnt
+    // kada stanje prelazi iz slanje u idle, clr se aktivira, u ostalim sl. je 0
+    assert property (clear |=> dup_cnt_o == 0);
+    assert property (en_c <= '1);
+    assume property (1);
 
 endmodule
