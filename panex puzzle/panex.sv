@@ -130,17 +130,16 @@ module panex #(parameter int S = 1) ( //radi za S>=1
 	// ogranici ekvivalentne poteze 
 	// A-B isto sto i A-C premestas jedan disk, pa drugi, i rezultat je isti
 	//assume property (!solved |-> s_eventually ({fr,to}[*(S-1)])); // ne, usporava za 3 diska
-	/*
-	// smanji prostor stanja - ovo zapravo usporava sim.
-	generate
-		for (genvar d = 0; d < S+1; d++)  // disk
-			for (genvar s = 0; s < 3; s++) begin// stap 0 1 2 
-				assume property (sticks[s][d].color != 2'b11);
-				assume property (!(top_index[s]<-1));
-			end
-	endgenerate
+	
+	// smanji prostor stanja 
+	int stick_index, disc_index;
+	assume property (stick_index >= 0 && stick_index < 3);
+	assume property (disc_index >= 0 && disc_index < S+1);
+	assume property (sticks[stick_index][disc_index].color != 2'b11);
+	assume property (!(top_index[stick_index]<-1));
 	assume property ($stable(sticks[middle][S])); // izbaci vrh srednjeg
-	*/
+	
+	
 	// ukupan broj diskova u sistemu je uvek S+S
 	// ...
 
