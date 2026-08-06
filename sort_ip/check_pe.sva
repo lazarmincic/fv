@@ -1,142 +1,103 @@
-module check_pe #(parameter int SEQ_LEN = 16) // obavezno > 1
-(
+module check_pe 
+    #(
+		parameter int DATA_WIDTH = 16,
+		parameter int LENGTH = 1024
+	)
+(    
     input logic clk,
     input logic rst,
     input logic en,
-    input logic sort_dir,
-    input logic shift_left,
-    input logic token_left_i,
-    input logic [15:0] a_left_i,
-    input logic [15:0] b_left_i,
-    input logic token_right_o,
     input logic set_reg,
-    input logic [15:0] a_right_o,
-    input logic [15:0] b_right_o,
-    input logic [15:0] reg_a,
-    input logic [15:0] reg_b,
-    input logic [15:0] a_left_o,
-    input logic [15:0] b_left_o,
+    input logic shift_left,
+    input logic sort_dir,
+
+    input logic token_left_i,
+
+    input logic token_right_o,
+    input logic [DATA_WIDTH-1:0] a_left_i,
+    input logic [DATA_WIDTH-1:0] b_left_i,
+    
+    input logic [DATA_WIDTH-1:0] a_right_o,
+    input logic [DATA_WIDTH-1:0] b_right_o,
+    input logic [DATA_WIDTH-1:0] reg_a,
+    input logic [DATA_WIDTH-1:0] reg_b,
+    input logic [DATA_WIDTH-1:0] a_left_o,
+    input logic [DATA_WIDTH-1:0] b_left_o,
     input logic token_right_i,
     input logic token_left_o,
-    input logic [15:0] a_right_i,
-    input logic [15:0] b_right_i
+    input logic [DATA_WIDTH-1:0] a_right_i,
+    input logic [DATA_WIDTH-1:0] b_right_i
 );
 
     default clocking @(posedge clk); endclocking
     default disable iff (rst);
 
-    logic en_cnt; // 1 nakon reseta
     logic token_cnt;
-    logic [$clog2(SEQ_LEN)-1:0] num_cnt; // ulazni brojevi - npr 0 - 1023
-    logic is_last;
-    logic is_last_cnt;
-    logic sort_dir_first;
+    logic en_cnt;
     always_ff@(posedge clk or posedge rst) begin
         if (rst) begin
-            en_cnt <= 1'b0;
-            num_cnt <= '0;
-            is_last <= 1'b0;
             token_cnt <= 1'b0;
-            sort_dir_first <= 1'b0;
-            is_last_cnt <= 1'b0;
-        end
-        else begin
+            en_cnt <= 1'b0;
+        end else begin
             if (en) begin
-                if (num_cnt == '1) begin
-                    num_cnt <= '0;
-                    is_last <= 1'b1;
-                end else begin
-                    num_cnt <= num_cnt + 1'b1;
-                    is_last <= 1'b0;
-                end
-                if (!shift_left) begin
-                    en_cnt <= 1'b1;
-                end
                 if (token_left_i) begin
                     token_cnt <= 1'b1;
                 end
-                if (!en_cnt) begin
-                    sort_dir_first <= sort_dir;
-                end
-                if (is_last) begin
-                    is_last_cnt <= 1'b1;
+                if (!shift_left) begin
+                    en_cnt <= 1'b1;
                 end
             end
         end
     end
 
-    // sort dir se ne menja kada je en 1 - kada je shift left 0 vrednost sort dir mora biti nepormenjena za svaki
-    // en, sve dok se vrsi primanje / ne pomera u levo 
-    assert property (en && ~en_cnt && sort_dir ##1 1 |=> always $stable(sort_dir_first));
-    assert property (en && ~en_cnt && sort_dir |=> sort_dir_first == $past(sort_dir));
-    assert property (en && ~en_cnt && ~sort_dir ##1 1 |=> always $stable(sort_dir_first));
-    assert property (en && ~en_cnt && ~sort_dir |=> sort_dir_first == $past(sort_dir));
-    assume property (en && en_cnt |-> sort_dir == sort_dir_first);
-
-    // shift left mora biti uvek 1 za svaki en
-    assume property (shift_left |-> en);
-    assume property (~en |-> ~shift_left);
-    assume property ((shift_left && en) || (~shift_left && ~en) |=> (shift_left && en) || (~shift_left && ~en));
-
-    // shift left moze da se aktivira jedino nakon sto pe primi sve brojeve
-    assume property (~is_last_cnt |-> ~shift_left);
 
     // prethodna vr i tr vr ulaza nisu iste ako je en 1
     a2: assume property (en |=> a_left_i != $past(a_left_i)); 
     a3: assume property (en |=> b_left_i != $past(b_left_i)); 
     // prethodna vr i tr vr ulaza su iste ako je en 0
-    //a4: assume property (~en |=> a_left_i == $past(a_left_i)); 
-    //a5: assume property (~en |=> b_left_i == $past(b_left_i)); 
-    // provera za modeling layer, da li dolazi do of
-    a6: assert property (num_cnt == '1 ##0 en |=> is_last ##0 num_cnt == '0); 
-    // ulazi ograniceni na SEQ_LEN broj vrednosti
-    a7: assume property (a_left_i >= 0 && a_left_i <= SEQ_LEN - 1); 
-    a8: assume property (b_left_i >= 0 && b_left_i <= SEQ_LEN - 1); 
-    
+    a4: assume property (~en |=> a_left_i == $past(a_left_i)); 
+    a5: assume property (~en |=> b_left_i == $past(b_left_i)); 
+    // ulazi ograniceni na LENGTH broj vrednosti
+    a7: assume property (a_left_i >= 0 && a_left_i <= LENGTH - 1); 
+    a8: assume property (b_left_i >= 0 && b_left_i <= LENGTH - 1); 
+
     c9: cover property ((
+        set_reg == 1'b1 ##1
         a_left_i == 16'd6 ##0 
         b_left_i == 16'd5 ##0 
         token_left_i ##1 
         a_left_i == 16'd4 ##0 
         b_left_i == 16'd3 ##1 
         a_left_i == 16'd2 ##0 
-        b_left_i == 16'd1) and en[*3] ##0 en_cnt[*3]); // dovedi set reg
-    
+        b_left_i == 16'd1) intersect ~en ##1 en[*3] intersect ~en_cnt ##0 en_cnt[*3]); 
+    c10: cover property (1[*10]);
+
     // token ne sme da se pojavi kada je en 0
-    a10: assume property (~en |-> ~token_left_i);
+    a10: assert property (~en |-> ~token_left_i);
     // token mora trajati 1 ciklus
-    a11: assume property (token_left_i |=> ~token_left_i);
+    a11: assert property (token_left_i |=> ~token_left_i);
     //token sme da se pojavi jednom pri primanju
     a12: assert property (token_left_i |=> token_cnt);
     // token se ne moze pojaviti ukoliko se vrsi pom u levo - TODO
-    //assume property (shift_left |-> ~token_left_i); // 
+    assert property (shift_left |-> ~token_left_i); // 
     // token se "prenosi" sa levog ulaza na desni izlaz
-    a13: assert property (token_left_i && ~shift_left |=> token_right_o);
+    // token left i uvek se pojavljuje nakon set reg
+    //r1: assume property (1);
+    a13: assert property (token_left_i && ~shift_left |=> token_right_o); 
     a30: assert property (token_right_i && shift_left |=> token_left_o);
     // token right o traje 1 ciklus ukoliko je en aktivan
     a14: assert property (token_right_o ##0 en |=> ~token_right_o);
     // token sme da se pojavi samo jednom za vreme prenosa u desno
-    a26: assume property (token_left_i |-> ~token_cnt); 
-    // set reg mora trajati 1 ciklus
-    a15: assume property (set_reg |=> ~set_reg);
-    // set reg ne sme da se pojavi kada je en 0
-    a16: assume property (~en |-> ~set_reg);
-    // set reg se pojavljuje jednom, kada i prvi en
-    a17: assume property (sort_dir && en |-> set_reg == ~en_cnt);
-    a27: assume property (~sort_dir && en |-> ~set_reg);
-    a25: assert property ((en |=> en_cnt));
-    // ogranici shift left
-    
-    a19: assert property (en && set_reg && sort_dir |-> a_right_o == b_right_o && a_right_o == '1);
-    a20: assert property (en && ~en_cnt && ~sort_dir  |-> a_right_o == b_right_o && a_right_o == '0);
+    a26: assert property (token_left_i |-> ~token_cnt); 
 
-    c21: cover property (set_reg and 1'b1[*5]);
+    a19: assert property (en && ~en_cnt && sort_dir |-> a_right_o == b_right_o && a_right_o == '1); // pada
+    a20: assert property (en && ~en_cnt && ~sort_dir  |-> a_right_o == b_right_o && a_right_o == '0);
 
     a22: assert property ((set_reg) |-> (a_right_o == '1 && b_right_o == '1) 
                         ##1 ((reg_a == $past(a_left_i) && reg_b == $past(b_left_i)) && ($past(a_left_i) <= $past(b_left_i)))
-                        || ((reg_a == $past(b_left_i) && reg_b == $past(a_left_i)) && ($past(a_left_i) >= $past(b_left_i))));
+                        || ((reg_a == $past(b_left_i) && reg_b == $past(a_left_i)) && ($past(a_left_i) >= $past(b_left_i)))); // pada
 
-    a23: assert property ((set_reg) |-> (a_right_o == '1 && b_right_o == '1));
+    a23: assert property ((set_reg) |-> (a_right_o == '1 && b_right_o == '1)); // pada
 
     a24: assert property (sort_dir && en && ~shift_left |-> (a_right_o <= b_right_o && reg_a <= reg_b && reg_a <= a_right_o)
                                           || (set_reg && (a_right_o == b_right_o && a_right_o == '1)));

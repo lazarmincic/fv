@@ -91,7 +91,7 @@ module check_fsm #(parameter int SEQ_LEN = 16) (
     // last ne sme da se menja ukoliko nije stigao ready (izvrsen handshake)
     a14: assume property (ain_tvalid && ain_tlast && ~ain_tready |=> ain_tlast);
     // sva stanja mogu biti dosegnuta
-    // TODO
+    a36: assert property (current_state != 3);
     a2: assert property (ain_tready |-> rx);
     a3: assume property (ain_tlast && ain_tready |=> ~ain_tlast && ~ain_tready && ~ain_tvalid);
     a6: assert property (ain_tlast && ain_tready |=> aout_tvalid);

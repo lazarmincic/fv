@@ -36,32 +36,40 @@ module pe_array
     generate
         for (i = 0; i < LENGTH/2; i++) begin : pe_chain
             if (i != LENGTH/2-1) begin 
-            pe #(.DATA_WIDTH (DATA_WIDTH)) pe_u (
-                    .clk (clk),
-                    .rst (rst),
-                    .en (en),
-                    .sort_dir (sort_dir),
-                    .shift_left (shift_left),
-                    // sa leva na desno
-                    .a_left_i (wire_a_lr[i]),
-                    .b_left_i (wire_b_lr[i]),
-                    .token_left_i (wire_token_lr[i]),
-                    .set_reg (set_reg),
-                    
-                    .a_right_o (wire_a_lr[i+1]),
-                    .b_right_o (wire_b_lr[i+1]),
-                    .token_right_o (wire_token_lr[i+1]),
-                    // sa desna na levo
-                    .a_right_i (wire_a_rl[i+1]),
-                    .b_right_i (wire_b_rl[i+1]),
-                    .token_right_i (wire_token_rl[i+1]),
+            pe #(
+                .DATA_WIDTH (DATA_WIDTH),
+                .LENGTH (LENGTH)
+                ) 
+            pe_u (
+                .clk (clk),
+                .rst (rst),
+                .en (en),
+                .sort_dir (sort_dir),
+                .shift_left (shift_left),
+                // sa leva na desno
+                .a_left_i (wire_a_lr[i]),
+                .b_left_i (wire_b_lr[i]),
+                .token_left_i (wire_token_lr[i]),
+                .set_reg (set_reg),
+                
+                .a_right_o (wire_a_lr[i+1]),
+                .b_right_o (wire_b_lr[i+1]),
+                .token_right_o (wire_token_lr[i+1]),
+                // sa desna na levo
+                .a_right_i (wire_a_rl[i+1]),
+                .b_right_i (wire_b_rl[i+1]),
+                .token_right_i (wire_token_rl[i+1]),
 
-                    .a_left_o (wire_a_rl[i]),
-                    .b_left_o (wire_b_rl[i]),
-                    .token_left_o (wire_token_rl[i])
+                .a_left_o (wire_a_rl[i]),
+                .b_left_o (wire_b_rl[i]),
+                .token_left_o (wire_token_rl[i])
             );
             end else begin // poslednji
-                pe #(.DATA_WIDTH (DATA_WIDTH)) pe_u (
+                pe #(
+                    .DATA_WIDTH (DATA_WIDTH),
+                    .LENGTH (LENGTH)
+                    ) 
+                pe_u (
                     .clk (clk),
                     .rst (rst),
                     .en (en),

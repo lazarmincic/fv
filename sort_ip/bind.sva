@@ -1,1 +1,2 @@
-bind sort_ip check_sort_ip #(.DATA_WIDTH(DATA_WIDTH), .LENGTH(LENGTH)) c (.*);
+bind sort_ip check_sort_ip #(.DATA_WIDTH(DATA_WIDTH), .LENGTH(LENGTH)) c1 (.*);
+bind sort_ip.pe_array_u.pe_chain[0].genblk1.pe_u check_pe #(.DATA_WIDTH(DATA_WIDTH), .LENGTH(LENGTH)) c2 (.*);

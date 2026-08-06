@@ -1,6 +1,7 @@
 //processing element
 module pe 
-#(  parameter int DATA_WIDTH = 16
+#(  parameter int DATA_WIDTH = 7,
+    parameter int LENGTH = 128 // treba za ceker
 )
 (
     input logic clk,

@@ -1,7 +1,7 @@
 module sort_ip
 	#(
-		parameter int DATA_WIDTH = 16, //7
-		parameter int LENGTH = 1024 //128
+		parameter int DATA_WIDTH = 7, //7
+		parameter int LENGTH = 128 //128
 	)
   	(
 		input logic clk,

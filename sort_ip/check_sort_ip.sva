@@ -7,6 +7,10 @@ module check_sort_ip
     input logic clk,
     input logic rst,
 
+    input logic en,
+    input logic shift_left,
+    input logic set_reg,
+
     input logic sort_dir,
     input logic ain_tvalid,
     input logic [DATA_WIDTH*2-1:0] ain_tdata,
@@ -26,7 +30,7 @@ module check_sort_ip
 
     // axi interfejs
     // sort dir prati valid
-    //assume property (ain_tvalid [->2] |-> );
+    // assume property (ain_tvalid [->2] |-> );
     // ogranici opseg ulaza
     //assume property (ain_tdata >= 0 && ain_tdata <= 1023);
     // dok se ne desi handshake valid data last i sort dir ostaju isti
@@ -66,5 +70,82 @@ module check_sort_ip
     // fsm nikada ne sme da je u stanju 11
 
     // mora se dodati assume na mestima gde su iseceni registri
+    // blackbox with holes
+
+    // pe:
+
+    logic en_cnt; // 1 nakon reseta
+    
+    logic [$clog2(LENGTH)-1:0] num_cnt; // ulazni brojevi - npr 0 - 1023
+    logic is_last;
+    logic is_last_cnt;
+    logic sort_dir_first;
+    bit set_reg_c;
+    always_ff@(posedge clk or posedge rst) begin
+        if (rst) begin
+            en_cnt <= 1'b0;
+            num_cnt <= '0;
+            is_last <= 1'b0;
+            sort_dir_first <= 1'b0;
+            is_last_cnt <= 1'b0;
+            set_reg_c <= 1'b0;
+        end
+        else begin
+            if (en) begin
+                if (num_cnt == '1) begin
+                    num_cnt <= '0;
+                    is_last <= 1'b1;
+                end else begin
+                    num_cnt <= num_cnt + 1'b1;
+                    is_last <= 1'b0;
+                end
+                if (!shift_left) begin
+                    en_cnt <= 1'b1;
+                end
+                if (!en_cnt) begin
+                    sort_dir_first <= sort_dir;
+                end
+                if (is_last) begin
+                    is_last_cnt <= 1'b1;
+                end
+            end
+            if (set_reg)
+                set_reg_c <= 1'b1;
+        end
+    end
+
+    // sort dir se ne menja kada je en 1 - kada je shift left 0 vrednost sort dir mora biti nepormenjena za svaki
+    // en, sve dok se vrsi primanje / ne pomera u levo 
+    assert property (en && ~en_cnt && sort_dir ##1 1 |=> always $stable(sort_dir_first));
+    assert property (en && ~en_cnt && sort_dir |=> sort_dir_first == $past(sort_dir));
+    assert property (en && ~en_cnt && ~sort_dir ##1 1 |=> always $stable(sort_dir_first));
+    assert property (en && ~en_cnt && ~sort_dir |=> sort_dir_first == $past(sort_dir));
+    assume property (en && en_cnt |-> sort_dir == sort_dir_first);
+
+    // shift left mora biti uvek 1 za svaki en
+    assert property (shift_left |-> en);
+    assert property (~en |-> ~shift_left);
+    assert property ((shift_left && en) || (~shift_left && ~en) |=> (shift_left && en) || (~shift_left && ~en));
+
+    // shift left moze da se aktivira jedino nakon sto pe primi sve brojeve
+    assert property (~is_last_cnt |-> ~shift_left);
+
+    // provera za modeling layer, da li dolazi do of
+    a6: assert property (num_cnt == '1 ##0 en |=> is_last ##0 num_cnt == '0); 
+    
+    // set reg mora trajati 1 ciklus
+    a15: assert property (set_reg |=> ~set_reg);
+    // set reg ne sme da se pojavi kada je en 0
+    a16: assert property (en |-> ~set_reg);
+    assert property (set_reg |-> ~en);
+    // set reg se pojavljuje jednom, pre prvog en, kada i prvi valid
+    a17: assert property ((sort_dir && en && ~en_cnt |-> set_reg_c) or (~sort_dir && en && ~en_cnt |-> ~set_reg_c));
+    assert property (set_reg |=> set_reg_c);
+    assert property (set_reg_c |=> $stable(set_reg_c));
+    a25: assert property ((en |=> en_cnt));
+    // ogranici shift left
+    // en ne sme da se desi pre set reg, ukoliko je sort dir 1
+    //assume property (1);
+    c21: cover property (set_reg and 1'b1[*5]);
       
 endmodule
