@@ -132,7 +132,8 @@ module panex #(parameter int S = 1) ( //radi za S>=1
 	//assume property (!solved |-> s_eventually ({fr,to}[*(S-1)])); // ne, usporava za 3 diska
 	
 	// smanji prostor stanja 
-	int stick_index, disc_index;
+	logic [1:0] stick_index;
+	logic [$clog2(S+1)-1:0] disc_index;
 	assume property (stick_index >= 0 && stick_index < 3);
 	assume property (disc_index >= 0 && disc_index < S+1);
 	assume property (sticks[stick_index][disc_index].color != 2'b11);
