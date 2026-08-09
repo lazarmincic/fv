@@ -25,8 +25,8 @@ module pe_array
     wire [DATA_WIDTH-1:0] wire_b_lr [0:LENGTH/2-1];
     wire [DATA_WIDTH-1:0] wire_a_rl [0:LENGTH/2-1];
     wire [DATA_WIDTH-1:0] wire_b_rl [0:LENGTH/2-1];
-    wire wire_token_lr [0:LENGTH/2-1];
-    wire wire_token_rl [0:LENGTH/2-1];
+    wire wire_token_lr [0:LENGTH/2];
+    wire wire_token_rl [0:LENGTH/2];
     
     assign wire_a_lr[0] = a_left_i;
     assign wire_b_lr[0] = b_left_i;
@@ -83,11 +83,11 @@ module pe_array
                     
                     .a_right_o (),
                     .b_right_o (),
-                    .token_right_o (),
+                    .token_right_o (wire_token_lr[i+1]),
                     // sa desna na levo
                     .a_right_i ('0),
                     .b_right_i ('0),
-                    .token_right_i (1'b0),
+                    .token_right_i (wire_token_rl[i+1]),
 
                     .a_left_o (wire_a_rl[i]),
                     .b_left_o (wire_b_rl[i]),
@@ -100,5 +100,6 @@ module pe_array
     assign a_left_o = wire_a_rl[0];
     assign b_left_o = wire_b_rl[0];
     assign token_left_o = wire_token_rl[0];
+    assign wire_token_rl [LENGTH/2] = wire_token_lr [LENGTH/2];
 
 endmodule

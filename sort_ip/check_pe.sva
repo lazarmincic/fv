@@ -52,14 +52,14 @@ module check_pe
 
 
     // prethodna vr i tr vr ulaza nisu iste ako je en 1
-    a2: assume property (en |=> a_left_i != $past(a_left_i)); 
-    a3: assume property (en |=> b_left_i != $past(b_left_i)); 
+    a2: assert property (en |=> a_left_i != $past(a_left_i)); 
+    a3: assert property (en |=> b_left_i != $past(b_left_i)); 
     // prethodna vr i tr vr ulaza su iste ako je en 0
-    a4: assume property (~en |=> a_left_i == $past(a_left_i)); 
-    a5: assume property (~en |=> b_left_i == $past(b_left_i)); 
+    a4: assert property (~en |=> a_left_i == $past(a_left_i)); 
+    a5: assert property (~en |=> b_left_i == $past(b_left_i)); 
     // ulazi ograniceni na LENGTH broj vrednosti
-    a7: assume property (a_left_i >= 0 && a_left_i <= LENGTH - 1); 
-    a8: assume property (b_left_i >= 0 && b_left_i <= LENGTH - 1); 
+    a7: assert property (a_left_i >= 0 && a_left_i <= LENGTH - 1); 
+    a8: assert property (b_left_i >= 0 && b_left_i <= LENGTH - 1); 
 
     c9: cover property ((
         set_reg == 1'b1 ##1
@@ -69,7 +69,7 @@ module check_pe
         a_left_i == 16'd4 ##0 
         b_left_i == 16'd3 ##1 
         a_left_i == 16'd2 ##0 
-        b_left_i == 16'd1) intersect ~en ##1 en[*3] intersect ~en_cnt ##0 en_cnt[*3]); 
+        b_left_i == 16'd1) intersect ~en ##1 en[*3]); 
     c10: cover property (1[*10]);
 
     // token ne sme da se pojavi kada je en 0

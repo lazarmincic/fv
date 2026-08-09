@@ -1,6 +1,11 @@
 // set reg  se desava u prelazu izmedju idle i slanje
 
-module fsm (
+module fsm 
+#(
+    parameter int DATA_WIDTH = 16,
+    parameter int LENGTH = 1024
+)
+(
     input logic clk,
     input logic rst,
 

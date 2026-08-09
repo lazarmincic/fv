@@ -1,4 +1,7 @@
-module check_fsm #(parameter int SEQ_LEN = 16) (
+module check_fsm #(
+    parameter int DATA_WIDTH = 16,
+    parameter int LENGTH = 1024 )
+( 
     input logic clk,
     input logic rst,
     input logic ain_tvalid,
@@ -17,6 +20,8 @@ module check_fsm #(parameter int SEQ_LEN = 16) (
     input logic token_sent,
     input logic [1:0] current_state 
 );
+    localparam int SEQ_LEN = LENGTH/2; // ovde je seq len broj PAROVA (broji kada su valid i ready u istom taktu oba 1)
+
     typedef enum logic [1:0] {
         IDLE = 2'b00, 
         PRIJEM = 2'b01,

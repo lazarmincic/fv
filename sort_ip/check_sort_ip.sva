@@ -72,6 +72,7 @@ module check_sort_ip
     // mora se dodati assume na mestima gde su iseceni registri
     // blackbox with holes
 
+//========================================================================================================
     // pe:
 
     logic en_cnt; // 1 nakon reseta
@@ -147,5 +148,10 @@ module check_sort_ip
     // en ne sme da se desi pre set reg, ukoliko je sort dir 1
     //assume property (1);
     c21: cover property (set_reg and 1'b1[*5]);
+
+    //=====================================================================================================
+    // fsm:
+
+    
       
 endmodule

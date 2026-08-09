@@ -1,0 +1,23 @@
+module check_pe_array 
+#(  parameter int DATA_WIDTH = 16,
+    parameter int LENGTH = 1024
+)
+(
+    input logic clk,
+    input logic rst,
+    input logic en, 
+    input logic [DATA_WIDTH-1:0] a_left_i,
+    input logic [DATA_WIDTH-1:0] b_left_i 
+
+);
+
+    default clocking @(posedge clk); endclocking
+    default disable iff (rst);
+
+    a2: assume property (en |=> a_left_i != $past(a_left_i)); 
+    a3: assume property (en |=> b_left_i != $past(b_left_i)); 
+    // prethodna vr i tr vr ulaza su iste ako je en 0
+    a4: assume property (~en |=> a_left_i == $past(a_left_i)); 
+    a5: assume property (~en |=> b_left_i == $past(b_left_i)); 
+
+endmodule

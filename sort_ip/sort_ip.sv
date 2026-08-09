@@ -1,7 +1,7 @@
 module sort_ip
 	#(
-		parameter int DATA_WIDTH = 7, //7
-		parameter int LENGTH = 128 //128
+		parameter int DATA_WIDTH = 4, //16
+		parameter int LENGTH = 16 //1024
 	)
   	(
 		input logic clk,
@@ -49,7 +49,7 @@ module sort_ip
 		.DATA_WIDTH (DATA_WIDTH),
 		.LENGTH (LENGTH)
 	)
-	 dup_cnt_u (
+	dup_cnt_u (
 		.clk (clk),
 		.rst (rst),
 		.shift_left (shift_left),
@@ -60,7 +60,11 @@ module sort_ip
 		.dup_cnt_o(dup_nums)
 	);
 
-	fsm fsm_u (
+	fsm #(
+		.DATA_WIDTH (DATA_WIDTH),
+		.LENGTH (LENGTH)
+	)
+	fsm_u (
 	    .clk (clk),
 		.rst (rst),
 
