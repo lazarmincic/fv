@@ -76,63 +76,48 @@ module check_sort_ip
     // pe:
 
     logic en_cnt; // 1 nakon reseta
-    
-    logic [$clog2(LENGTH)-1:0] num_cnt; // ulazni brojevi - npr 0 - 1023
-    logic is_last;
-    logic is_last_cnt;
     logic sort_dir_first;
     bit set_reg_c;
+    bit is_last_cnt;
     always_ff@(posedge clk or posedge rst) begin
         if (rst) begin
             en_cnt <= 1'b0;
-            num_cnt <= '0;
-            is_last <= 1'b0;
             sort_dir_first <= 1'b0;
-            is_last_cnt <= 1'b0;
             set_reg_c <= 1'b0;
+            is_last_cnt <= 1'b0;
         end
         else begin
             if (en) begin
-                if (num_cnt == '1) begin
-                    num_cnt <= '0;
-                    is_last <= 1'b1;
-                end else begin
-                    num_cnt <= num_cnt + 1'b1;
-                    is_last <= 1'b0;
-                end
                 if (!shift_left) begin
                     en_cnt <= 1'b1;
                 end
                 if (!en_cnt) begin
                     sort_dir_first <= sort_dir;
                 end
-                if (is_last) begin
-                    is_last_cnt <= 1'b1;
-                end
             end
             if (set_reg)
                 set_reg_c <= 1'b1;
+            if (ain_tvalid && ain_tready && ain_tlast)
+                is_last_cnt <= 1'b1;
         end
     end
 
-    // sort dir se ne menja kada je en 1 - kada je shift left 0 vrednost sort dir mora biti nepormenjena za svaki
-    // en, sve dok se vrsi primanje / ne pomera u levo 
+    
+
     assert property (en && ~en_cnt && sort_dir ##1 1 |=> always $stable(sort_dir_first));
     assert property (en && ~en_cnt && sort_dir |=> sort_dir_first == $past(sort_dir));
     assert property (en && ~en_cnt && ~sort_dir ##1 1 |=> always $stable(sort_dir_first));
     assert property (en && ~en_cnt && ~sort_dir |=> sort_dir_first == $past(sort_dir));
-    assume property (en && en_cnt |-> sort_dir == sort_dir_first);
 
-    // shift left mora biti uvek 1 za svaki en
-    assert property (shift_left |-> en);
-    assert property (~en |-> ~shift_left);
-    assert property ((shift_left && en) || (~shift_left && ~en) |=> (shift_left && en) || (~shift_left && ~en));
-
+    // en mora biti uvek 1 za svaki shift_left
+    assert property (en && aout_tvalid |-> shift_left);
+    assert property (~aout_tvalid |-> ~shift_left);
+    // shift left se ne menja dok je prijem u toku i 0 je
+    assert property (ain_tready |-> ~shift_left); 
+    // shift left je 1 dok se salje
+    assert property (aout_tvalid && aout_tready |-> shift_left);
     // shift left moze da se aktivira jedino nakon sto pe primi sve brojeve
-    assert property (~is_last_cnt |-> ~shift_left);
-
-    // provera za modeling layer, da li dolazi do of
-    a6: assert property (num_cnt == '1 ##0 en |=> is_last ##0 num_cnt == '0); 
+    assert property (~is_last_cnt |-> ~shift_left); 
     
     // set reg mora trajati 1 ciklus
     a15: assert property (set_reg |=> ~set_reg);
@@ -152,6 +137,7 @@ module check_sort_ip
     //=====================================================================================================
     // fsm:
 
+    c1: cover property (aout_tlast); 
     
       
 endmodule

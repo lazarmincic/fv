@@ -25,8 +25,8 @@ module pe_array
     wire [DATA_WIDTH-1:0] wire_b_lr [0:LENGTH/2-1];
     wire [DATA_WIDTH-1:0] wire_a_rl [0:LENGTH/2-1];
     wire [DATA_WIDTH-1:0] wire_b_rl [0:LENGTH/2-1];
-    wire wire_token_lr [0:LENGTH/2];
-    wire wire_token_rl [0:LENGTH/2];
+    wire wire_token_lr [0:LENGTH/2-1];
+    wire wire_token_rl [0:LENGTH/2-1];
     
     assign wire_a_lr[0] = a_left_i;
     assign wire_b_lr[0] = b_left_i;
@@ -35,7 +35,7 @@ module pe_array
     genvar i;
     generate
         for (i = 0; i < LENGTH/2; i++) begin : pe_chain
-            if (i != LENGTH/2-1) begin 
+            if (i != LENGTH/2-1) begin : front
             pe #(
                 .DATA_WIDTH (DATA_WIDTH),
                 .LENGTH (LENGTH)
@@ -64,7 +64,7 @@ module pe_array
                 .b_left_o (wire_b_rl[i]),
                 .token_left_o (wire_token_rl[i])
             );
-            end else begin // poslednji
+            end else begin : last // poslednji
                 pe #(
                     .DATA_WIDTH (DATA_WIDTH),
                     .LENGTH (LENGTH)
@@ -83,15 +83,16 @@ module pe_array
                     
                     .a_right_o (),
                     .b_right_o (),
-                    .token_right_o (wire_token_lr[i+1]),
+                    // u desni ulaz prethodnog
+                    .token_right_o (wire_token_rl[i]), 
                     // sa desna na levo
                     .a_right_i ('0),
                     .b_right_i ('0),
-                    .token_right_i (wire_token_rl[i+1]),
+                    .token_right_i (1'b0),
 
                     .a_left_o (wire_a_rl[i]),
                     .b_left_o (wire_b_rl[i]),
-                    .token_left_o (wire_token_rl[i])
+                    .token_left_o ()
                 );
             end
         end
@@ -100,6 +101,5 @@ module pe_array
     assign a_left_o = wire_a_rl[0];
     assign b_left_o = wire_b_rl[0];
     assign token_left_o = wire_token_rl[0];
-    assign wire_token_rl [LENGTH/2] = wire_token_lr [LENGTH/2];
 
 endmodule

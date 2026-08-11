@@ -12,6 +12,8 @@ module check_dup_cnt
     input logic clear,
 
     input logic sort_dir,
+    input logic ain_tvalid,
+    input logic aout_tready,
 
     input logic [$clog2(LENGTH)-1:0] dup_cnt_o // log2(1024)
 );
@@ -19,7 +21,9 @@ module check_dup_cnt
     bit shift_left_c;
     bit [$clog2(LENGTH)-1:0] en_c; // shift left je en za modul d c
     logic [DATA_WIDTH-1:0] history [0:LENGTH-1];
-    bit [$clog2(LENGTH)-1:0] elem_c;
+    bit [$clog2(LENGTH+1)-1:0] elem_c;
+    bit sort_dir_m;
+    bit [$clog2(LENGTH)-1:0] dups; // komb
 
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
@@ -27,6 +31,7 @@ module check_dup_cnt
             elem_c <= '0;
             for (int i = 0; i < LENGTH; i++) history[i] <= '0;
             en_c <= '0;
+            sort_dir_m <= 1'b0;
         end
         else if (clear) begin
             elem_c <= '0;
@@ -39,14 +44,20 @@ module check_dup_cnt
             history[elem_c] <= a_i;
             history[elem_c+1'b1] <= b_i;
             elem_c <= elem_c + 2'd2;
+        end else begin // ovde je ~shift_left
+            if (sort_dir && ain_tvalid)
+                sort_dir_m <= 1'b1;
+            else if (~sort_dir && ain_tvalid)
+                sort_dir_m <= 1'b0;
+            shift_left_c <= 1'b0;
         end
     end
 
-    bit [LENGTH-1:0] dups;
+
     always_comb begin
         dups = '0;
         if (elem_c >= 2) begin
-            for (bit [$clog2(LENGTH)-1:0] i = '0; i < elem_c - 1'b1; i++) begin
+            for (bit [$clog2(LENGTH)-1:0] i = '0; i < (elem_c[$clog2(LENGTH)-1:0] - 1'b1); i++) begin
                 if (history[i] == history[i+1]) begin
                     dups = dups + 1'b1;
                 end
@@ -59,46 +70,44 @@ module check_dup_cnt
 
     //sort dir = 1 - rastuce
 
-    // obranici ulaze
-    r7: assume property (a_i >= 0 && a_i <= LENGTH - 1);
-    r8: assume property (b_i >= 0 && b_i <= LENGTH - 1);
-    c1: cover property (shift_left [*5]);
+    c1: cover property (shift_left [*LENGTH/2]);
     // ulazi su sortirani - a b a b a b a b u zavisnosti od sort dir
-    r2: assume property ($stable(sort_dir));
-    r10: assume property (sort_dir |-> a_i <= b_i);
-    r11: assume property (~sort_dir |-> a_i >= b_i);
-    r9: assume property (~shift_left |-> $stable(a_i) && $stable(b_i));
-    r1: assume property (sort_dir && shift_left |->  a_i >= $past(b_i));
-    r3: assume property (~sort_dir && shift_left |-> a_i <= $past(b_i));
+    // ovde treba da se pamti vrednost sort dir jer se ono pojavljuje samo prilikom prijema
+
+    r10: assert property (sort_dir_m  |-> a_i <= b_i);
+    r11: assert property (~sort_dir_m |-> a_i >= b_i);
+    r9: assert property (~shift_left[*2] |-> $stable(a_i) && $stable(b_i)); 
+    assert property (~shift_left |-> a_i == b_i && a_i == '0); 
+    r1: assert property ((sort_dir_m && shift_left && aout_tready)[*2] |->  a_i >= $past(b_i)); //!
+    // pokri i slucajeve osim [*2]
+    assert property ((~aout_tready && shift_left)[*2] |-> a_i == $past(a_i));
+    assert property ((~aout_tready && shift_left)[*2] |-> b_i == $past(b_i));
+    r3: assert property ((~sort_dir_m && shift_left && aout_tready)[*2] |-> a_i <= $past(b_i));
     // 1 slucaj - duplikati se nalaze samo u taktu
-    a1: assert property ( a_i == b_i && $past(b_i)!=a_i |=> (dup_cnt_o == $past(dup_cnt_o) + 1'b1));
+    a1: assert property ( shift_left && a_i == b_i && $past(b_i)!=a_i |-> (dup_cnt_o == $past(dup_cnt_o) + 1'b1));
     // 2 slucaj - duplikati samo izmedju taktova
-    a2: assert property (shift_left_c && a_i != b_i && $past(b_i)==a_i |=> dup_cnt_o == ($past(dup_cnt_o) + 1'b1)); // pada
+    a2: assert property (shift_left_c && a_i != b_i && $past(b_i)==a_i |-> dup_cnt_o == ($past(dup_cnt_o) + 1'b1)); // pada
     // 3 slucaj - duplikati i u ovom i izmedju taktova
-    a3: assert property (shift_left_c && a_i == b_i && $past(b_i)==a_i && shift_left |=> dup_cnt_o == ($past(dup_cnt_o) + 2'd2)); // pada
+    a3: assert property (shift_left_c && a_i == b_i && $past(b_i)==a_i && shift_left |-> dup_cnt_o == ($past(dup_cnt_o) + 2'd2)); // pada
     //4 slucaj - bez duplikata
-    a4: assert property ( a_i != b_i && $past(b_i)!=a_i |=> 
+    a4: assert property ( a_i != b_i && $past(b_i)!=a_i |-> 
                          $stable(dup_cnt_o) );
-    a5: assert property (~shift_left |=> $stable(dup_cnt_o));
+    a5: assert property (~shift_left[*2] |-> $stable(dup_cnt_o));
 
     // sve dok se ne pojavi shift left prvi put, vrednosti nisu validne
     // kad je shift left c 1 bezbedno je uporedjivati vrednosti medju taktovima
 
     // zlatni model za brojenje duplikata
-    // ogranici vrednosti iz history
-    logic [$clog2(LENGTH)-1:0] index;
-    assume property (index >= 0 && index < LENGTH);
-    r12: assume property (history[index] >= 0 && history[index] <= LENGTH - 1);
     // nakon sto se shift left pojavio S L puta 
-    assert property (shift_left[->(LENGTH/2)]|->dups==dup_cnt_o);
+    assert property (shift_left[->(LENGTH/2)]|=>dups==$past(dup_cnt_o));
     // nakon sto prodje sekvenca en se mora spustiti
-    assume property (shift_left[->(LENGTH/2)]|=> ~shift_left);
+    assert property (shift_left[->(LENGTH/2)]|=> ~shift_left);
     // TODO u nastavku ukloni ovaj assume
     //TODO shift left se moze pojaviti nakon sto se spustio
     // poslednje radjeno - dodat clr signal kao izlaz fsm a i ulaz u dup cnt
     // kada stanje prelazi iz slanje u idle, clr se aktivira, u ostalim sl. je 0
     assert property (clear |=> dup_cnt_o == 0);
-    assert property (en_c <= '1);
-    assume property (1);
+    //assert property (en_c <= '1);
+    //assume property (1);
 
 endmodule

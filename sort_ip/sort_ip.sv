@@ -1,7 +1,7 @@
 module sort_ip
 	#(
-		parameter int DATA_WIDTH = 4, //16
-		parameter int LENGTH = 16 //1024
+		parameter int DATA_WIDTH = 3, //16
+		parameter int LENGTH = 8 //1024
 	)
   	(
 		input logic clk,
@@ -53,6 +53,7 @@ module sort_ip
 		.clk (clk),
 		.rst (rst),
 		.shift_left (shift_left),
+		.aout_tready (aout_tready),
 		.a_i (aout_tdata[DATA_WIDTH-1:0]),
 		.b_i (aout_tdata[DATA_WIDTH*2-1:DATA_WIDTH]),
 		.clear (clear),

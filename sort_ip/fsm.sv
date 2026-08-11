@@ -103,9 +103,9 @@ module fsm
 
             SLANJE: begin
                 aout_tvalid = 1'b1; 
+                shift_left = 1'b1;
                 if (aout_tvalid && aout_tready) begin
                     en = 1'b1;
-                    shift_left = 1'b1;
                 end
             end
 

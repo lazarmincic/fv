@@ -6,18 +6,60 @@ module check_pe_array
     input logic clk,
     input logic rst,
     input logic en, 
+    input logic sort_dir, 
+    input logic shift_left,
+    input logic set_reg,
+    input logic token_left_i,
+
     input logic [DATA_WIDTH-1:0] a_left_i,
-    input logic [DATA_WIDTH-1:0] b_left_i 
+    input logic [DATA_WIDTH-1:0] b_left_i,
+
+    input logic token_left_o
 
 );
 
     default clocking @(posedge clk); endclocking
     default disable iff (rst);
 
-    a2: assume property (en |=> a_left_i != $past(a_left_i)); 
-    a3: assume property (en |=> b_left_i != $past(b_left_i)); 
+    // prethodna vr i tr vr ulaza nisu iste ako je en 1
+    r1: assume property (en |=> a_left_i != $past(a_left_i)); 
+    r2: assume property (en |=> b_left_i != $past(b_left_i)); 
     // prethodna vr i tr vr ulaza su iste ako je en 0
-    a4: assume property (~en |=> a_left_i == $past(a_left_i)); 
-    a5: assume property (~en |=> b_left_i == $past(b_left_i)); 
+    r3: assume property (~en |=> a_left_i == $past(a_left_i)); 
+    r4: assume property (~en |=> b_left_i == $past(b_left_i)); 
+
+    c1: cover property ((
+        set_reg == 1'b1 ##1
+        a_left_i == 16'd6 ##0 
+        b_left_i == 16'd5 ##0 
+        token_left_i ##1 
+        a_left_i == 16'd4 ##0 
+        b_left_i == 16'd3 ##1 
+        a_left_i == 16'd2 ##0 
+        b_left_i == 16'd1) intersect ~en ##1 en[*3]); 
+
+    c2: cover property (token_left_o); 
+
+    // token ne sme da se pojavi kada je en 0
+    a1: assert property (~en |-> ~token_left_i);
+
+    // token mora trajati 1 ciklus
+    a8: assert property (token_left_i |=> ~token_left_i);
+
+    logic token_cnt;
+    always_ff@(posedge clk or posedge rst) begin
+        if (rst) begin
+            token_cnt <= 1'b0;
+        end else begin
+            if (en) begin
+                if (token_left_i) begin
+                    token_cnt <= 1'b1;
+                end
+            end
+        end
+    end
+
+    //token sme da se pojavi jednom pri primanju
+    a9: assert property (token_left_i |=> token_cnt);
 
 endmodule
