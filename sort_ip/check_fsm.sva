@@ -85,7 +85,7 @@ module check_fsm #(
             if (token_o) begin
                 token_o_cnt <= 1'b1;
             end
-            if (token_i) begin
+            if (token_i && aout_tready) begin
                 token_i_cnt <= 1'b1;
             end
 
@@ -124,7 +124,8 @@ module check_fsm #(
     a18: assume property (current_state == SLANJE |-> s_eventually tx_of);
     cover property (current_state == SLANJE);
     // ogranici token i
-    a28: assume property (token_i |=> tx_of);
+    a28: assert property (token_i && aout_tready |=> tx_of);
+    assert property (token_i == (tx_num == '1));
 
     cover property (tx_num == '1 ##1 1);
     // koliko se primilo podataka toliko se i salje
@@ -132,7 +133,7 @@ module check_fsm #(
     cover property (current_state == SLANJE ##[*] current_state == IDLE);
 
     a33: assert property (tx_of |-> $past(token_i));
-    // token i desava se samo jednom tokom prenosa
+    // token i desava se samo jednom tokom prenosa / samo jednom se desi da je token i ready u isto vreme 1
     a30: assert property (token_i |-> ~token_i_cnt);
 
     a34: assume property (rx_of |-> $past(ain_tlast)); // last traje 1 ciklus jer je ready svakako 1,

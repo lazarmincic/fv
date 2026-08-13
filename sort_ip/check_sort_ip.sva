@@ -138,6 +138,8 @@ module check_sort_ip
     // fsm:
 
     c1: cover property (aout_tlast); 
+    cover property (ain_tvalid ##0 sort_dir ##[+] aout_tlast ##1 ~aout_tlast);
+    cover property (ain_tvalid ##0 ~sort_dir ##[+] aout_tlast ##1 ~aout_tlast);
 
     cover property (~ain_tvalid ##1 ain_tvalid ##1 ~ain_tvalid);
     

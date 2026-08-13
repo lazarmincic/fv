@@ -20,7 +20,8 @@ module check_pe_array
 
     input logic ain_tvalid,
     input logic ain_tready,
-    input logic ain_tlast
+    input logic ain_tlast,
+    input logic aout_tready
 );
 
     default clocking @(posedge clk); endclocking
@@ -88,7 +89,8 @@ module check_pe_array
     assert property ($stable(en) && ~en && $stable(shift_left) |-> $stable(b_left_o));
 
     assert property (token_left_i |=> ~token_left_i);
-    assert property (token_left_o |=> ~token_left_o);
+    assert property (token_left_o && aout_tready |=> ~token_left_o);
+    assert property (token_left_o && ~aout_tready |=> token_left_o);
     // da li radi to sto treba - sortira
     // te provere su u check dup cnt
     
