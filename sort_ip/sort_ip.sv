@@ -1,7 +1,8 @@
 module sort_ip
 	#(
-		parameter int DATA_WIDTH = 3, //16
-		parameter int LENGTH = 8 //1024
+		parameter int DATA_WIDTH = 2, //16 ** radi za 2 i 3
+		parameter int LENGTH = 4 //1024 ** radi za 4 i 8
+		// LENGTH MORA BITI STEPEN DVOJKE
 	)
   	(
 		input logic clk,

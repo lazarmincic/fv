@@ -20,9 +20,11 @@ module dup_cnt
     logic prev_b_valid;
     logic pair_equal;
     logic [$clog2(LENGTH)-1:0] dup_cnt_prev;
+    logic en;
 
     assign pair_equal = (a_i == b_i);
     assign match_inter = (a_i == prev_b) && prev_b_valid;
+    assign en = aout_tready && shift_left;
 
     always_ff @(posedge clk or posedge rst) begin
 		if (rst) begin
@@ -34,23 +36,20 @@ module dup_cnt
             prev_b_valid <= 1'b0;
             dup_cnt_prev <= 1'b0;
         end
-		else if (shift_left) begin 
+		else if (en) begin 
 			prev_b <= b_i;
-            if (!prev_b_valid) begin
-                prev_b_valid = 1'b1;
-            end
+            prev_b_valid <= 1'b1;
             dup_cnt_prev <= dup_cnt_o;
-		end
+        end
 	end
 
     always_comb begin
-        dup_cnt_o  <= '0;
         if (clear) begin 
-            dup_cnt_o  <= '0; 
+            dup_cnt_o = '0; 
+        end else if (shift_left) begin
+            dup_cnt_o = dup_cnt_prev + pair_equal + match_inter;
         end else begin
-            if (shift_left && aout_tready) begin
-                dup_cnt_o  <= dup_cnt_prev + pair_equal + match_inter;
-            end
+            dup_cnt_o = dup_cnt_prev;
         end
     end
 endmodule

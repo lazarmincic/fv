@@ -18,7 +18,8 @@ module check_fsm #(
     input logic set_reg,
 
     input logic token_sent,
-    input logic [1:0] current_state 
+    input logic [1:0] current_state,
+    input logic clear
 );
     localparam int SEQ_LEN = LENGTH/2; // ovde je seq len broj PAROVA (broji kada su valid i ready u istom taktu oba 1)
 
@@ -32,6 +33,7 @@ module check_fsm #(
     default disable iff (rst);
 
     logic rx, rx_of, tx_of;  // overflow
+    bit rx_of_c;
     logic [$clog2(SEQ_LEN)-1:0] rx_num;
     logic [$clog2(SEQ_LEN)-1:0] tx_num;
     logic token_o_cnt, token_i_cnt;
@@ -44,6 +46,7 @@ module check_fsm #(
             tx_of <= 1'b0;
             token_o_cnt <= 1'b0;
             token_i_cnt <= 1'b0;
+            rx_of_c <= 1'b0;
         end else begin
             if (current_state == IDLE) begin
                 rx <= 1'b0;
@@ -61,6 +64,7 @@ module check_fsm #(
                 if (rx_num == '1) begin
                     rx_num <= '0;
                     rx_of <= 1'b1;
+                    rx_of_c <= 1'b1;
                 end
             end
             tx_of <= 1'b0;
@@ -84,6 +88,10 @@ module check_fsm #(
             if (token_i) begin
                 token_i_cnt <= 1'b1;
             end
+
+            if (ain_tvalid && ain_tready) begin
+                rx_of_c <= 1'b0;
+            end
             
         end
     end
@@ -94,17 +102,19 @@ module check_fsm #(
     a10: assume property (ain_tvalid |-> s_eventually ain_tlast);
     // last sme da se podigne samo ako je valid 1
     a11: assume property (ain_tlast |-> ain_tvalid);
-    // last ne sme da se menja ukoliko nije stigao ready (izvrsen handshake)
-    a14: assume property (ain_tvalid && ain_tlast && ~ain_tready |=> ain_tlast);
+    // last ne sme da se menja ukoliko nije stigao ready (izvrsen handshake) - ne, ready je uvek 1 pri prijemu!
+    //a14: assume property (ain_tvalid && ain_tlast && ~ain_tready |=> ain_tlast && ain_tvalid);
+    assert property (!(ain_tvalid && ain_tlast && ~ain_tready));
+    assert property (ain_tlast |=> !ain_tlast);
 
-    a3: assume property (ain_tlast && ain_tready |=> ~ain_tlast && ~ain_tready && ~ain_tvalid);
+    a3: assume property (ain_tvalid && ain_tlast && ain_tready |=> ~ain_tlast && ~ain_tvalid);
 
     assert property (aout_tvalid && ~aout_tready |=> aout_tvalid);
     assert property (aout_tvalid |-> s_eventually token_i);
     assert property (token_i |-> aout_tvalid);
     assert property (aout_tvalid && token_i && ~aout_tready |=> token_i); // nikada se ne desi ??
     assert property (token_i && aout_tready |=> ~token_i && ~aout_tready && ~aout_tvalid);
-    assume property (current_state == IDLE |-> ~aout_tready); // za ready
+    assume property (current_state == IDLE || current_state == PRIJEM |-> ~aout_tready); // za ready
     a7: assert property (~aout_tready && aout_tvalid |=> s_eventually (aout_tready && aout_tvalid));
 
     a8: assert property (token_i && aout_tvalid && aout_tready |=> ~token_i);
@@ -125,9 +135,14 @@ module check_fsm #(
     // token i desava se samo jednom tokom prenosa
     a30: assert property (token_i |-> ~token_i_cnt);
 
-    a34: assume property (ain_tlast |=> rx_of);
+    a34: assume property (rx_of |-> $past(ain_tlast)); // last traje 1 ciklus jer je ready svakako 1,
+    // treba samo da dodje jos jedan valid ulazni tako da se nikada nece desiti da last traje vise ciklusa
     
-    a35: assume property (rx_of |-> $past(ain_tlast));
+    // od kada je bio idl pa sve dok se ne pojavi past rx of, last je 0
+    a35: assume property (ain_tlast |=> rx_of);
+    // samo jednom u toku prijema se desava last
+    assume property (current_state == IDLE || current_state == SLANJE |-> ~ain_tlast);
+    assert property (ain_tlast[*1:$] |=> ~ain_tlast s_until current_state != PRIJEM);
     // last i valid da se ne podize dok se vrsi slanje
     assume property (current_state == SLANJE |-> ~ain_tlast);
     assume property (current_state == SLANJE |-> ~ain_tvalid);
@@ -185,8 +200,13 @@ module check_fsm #(
     assume property (current_state == IDLE || current_state == PRIJEM |-> $stable(sd));
     //assume property (en && en_cnt |-> sort_dir == sort_dir_first);
     assume property (ain_tvalid |-> sort_dir == sd);
+    assert property (ain_tvalid [*2] |-> $stable(sort_dir) ); 
+    // axi kaze da kada je valid 1, podaci su nevazni!
 
     // CLEAR SIGNAL
+    assert property (clear |=> ~clear);
+    assert property (clear |=> current_state == SLANJE);
+    assert property (ain_tlast |-> clear);
     
 
 endmodule

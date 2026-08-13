@@ -4,7 +4,10 @@ bind pe check_pe #(.DATA_WIDTH(DATA_WIDTH), .LENGTH(LENGTH))
     c2 (.*);
 //bind sort_ip.pe_array_u.pe_chain[0].genblk1.pe_u check_pe #(.DATA_WIDTH(DATA_WIDTH), .LENGTH(LENGTH)) c2 (.*);
 bind sort_ip.pe_array_u check_pe_array #(.DATA_WIDTH(DATA_WIDTH), .LENGTH(LENGTH)) 
-    c3 (.*);
+    c3 (.ain_tvalid (sort_ip.ain_tvalid),
+        .ain_tready (sort_ip.ain_tready),
+        .ain_tlast (sort_ip.ain_tlast),
+        .*);
 bind sort_ip.fsm_u check_fsm #(.DATA_WIDTH(DATA_WIDTH), .LENGTH(LENGTH)) 
     c4 (.*);
 bind sort_ip.dup_cnt_u check_dup_cnt #(.DATA_WIDTH(DATA_WIDTH), .LENGTH(LENGTH)) 

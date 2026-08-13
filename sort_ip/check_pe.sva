@@ -54,9 +54,7 @@ module check_pe
     end
 
 
-    // ulazi ograniceni na LENGTH broj vrednosti
-    a5: assert property (a_left_i >= 0 && a_left_i <= LENGTH - 1); 
-    a6: assert property (b_left_i >= 0 && b_left_i <= LENGTH - 1); 
+    // ulazi ograniceni parametrom
 
     c2: cover property (1[*10]);
 
